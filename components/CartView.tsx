@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useProducts } from '../context/ProductContext';
 import CartItem from './CartItem';
 import { formatCurrency } from '../utils/formatter';
+import BackButton from './BackButton';
 
 const CartView: React.FC = () => {
     const { cartItems } = useCart();
@@ -20,18 +20,22 @@ const CartView: React.FC = () => {
 
     if (cartItems.length === 0) {
         return (
-            <div className="text-center py-10">
-                <h2 className="text-2xl font-semibold mb-2">Keranjang Anda Kosong</h2>
-                <p className="text-gray-600 mb-4">Ayo mulai belanja!</p>
-                <Link to="/" className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary">
-                    Kembali ke Katalog
-                </Link>
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+                <BackButton />
+                <div className="text-center py-10">
+                    <h2 className="text-2xl font-semibold mb-2">Keranjang Anda Kosong</h2>
+                    <p className="text-gray-600 mb-4">Ayo mulai belanja!</p>
+                    <Link to="/" className="bg-primary text-white px-6 py-2 rounded-md hover:bg-secondary">
+                        Jelajahi Produk
+                    </Link>
+                </div>
             </div>
         );
     }
     
     return (
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
+            <BackButton />
             <h1 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">Keranjang Belanja</h1>
             <div>
                 {cartItems.map(item => (

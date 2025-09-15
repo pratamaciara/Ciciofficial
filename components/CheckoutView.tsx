@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
@@ -7,6 +6,7 @@ import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useToast } from '../context/ToastContext';
 import { PaymentMethods } from '../types';
 import { formatCurrency } from '../utils/formatter';
+import BackButton from './BackButton';
 
 const CheckoutView: React.FC = () => {
   const { cartItems, clearCart } = useCart();
@@ -81,6 +81,7 @@ const CheckoutView: React.FC = () => {
 
   return (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg max-w-2xl mx-auto">
+      <BackButton />
       <h1 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-4">Checkout</h1>
       
       <div className="space-y-4">

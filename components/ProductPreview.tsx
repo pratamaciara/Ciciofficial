@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useProducts } from '../context/ProductContext';
@@ -6,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
 import { formatCurrency } from '../utils/formatter';
 import BuyNowModal from './BuyNowModal';
+import BackButton from './BackButton';
 
 const ProductPreview: React.FC = () => {
     const { productId } = useParams<{ productId: string }>();
@@ -75,6 +75,7 @@ const ProductPreview: React.FC = () => {
     return (
         <>
             <div className="bg-white p-4 sm:p-8 rounded-lg shadow-lg max-w-4xl mx-auto">
+                <BackButton />
                 <div className="grid md:grid-cols-2 gap-8">
                     <div className="relative">
                         <img src={product.imageUrl} alt={product.name} className={`w-full h-auto rounded-lg object-cover aspect-square shadow-md ${isOutOfStock ? 'grayscale' : ''}`}/>
