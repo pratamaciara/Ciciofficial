@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from './ProductCard';
+import { Product } from '../types';
 
 type FilterType = 'all' | 'newest' | 'bestselling' | 'sale';
 
@@ -10,21 +11,22 @@ const ProductList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
-  const filteredProducts = useMemo(() => {
-    let processedProducts = [...products];
+  const filteredAndSortedProducts = useMemo(() => {
+    let processedProducts: Product[] = [...products];
 
     // 1. Search filter
     if (searchTerm) {
       processedProducts = processedProducts.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase())
+        (product.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (product.category?.toLowerCase() || '').includes(searchTerm.toLowerCase())
       );
     }
 
     // 2. Category/Sort filter
     switch (activeFilter) {
       case 'newest':
-        // Assuming newest are added first, no sort needed if addProduct prepends
+        // Sort by ID (assuming it's a timestamp) descending for newest
+        processedProducts.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
         break;
       case 'bestselling':
         processedProducts.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
@@ -34,7 +36,7 @@ const ProductList: React.FC = () => {
         break;
       case 'all':
       default:
-        // No additional filtering
+        // No additional filtering or sorting needed for 'all'
         break;
     }
 
@@ -76,9 +78,9 @@ const ProductList: React.FC = () => {
         </div>
       </div>
       
-      {filteredProducts.length > 0 ? (
+      {filteredAndSortedProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProducts.map(product => (
+          {filteredAndSortedProducts.map(product => (
             <ProductCard key={`${product.id}-${activeFilter}`} product={product} />
           ))}
         </div>

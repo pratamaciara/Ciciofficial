@@ -95,13 +95,23 @@ const loadProductsFromStorage = (): Product[] => {
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(loadProductsFromStorage);
 
+  // Centralized effect to save products to localStorage whenever they change
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('products', JSON.stringify(products));
+    } catch (error) {
+      console.error("Failed to save products to localStorage:", error);
+    }
+  }, [products]);
+
   // Effect for cross-tab state synchronization
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'products' && event.newValue) {
         try {
+          // Prevent re-saving what we just received from another tab
           const newProducts = JSON.parse(event.newValue);
-          if (Array.isArray(newProducts)) {
+          if (Array.isArray(newProducts) && JSON.stringify(products) !== event.newValue) {
             setProducts(newProducts);
           }
         } catch (error) {
@@ -115,51 +125,22 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, []);
+  }, [products]); // Add products to dependency array to have latest state for comparison
 
   const addProduct = (product: Product) => {
-    setProducts((prev) => {
-      const newProducts = [product, ...prev];
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+    setProducts((prev) => [product, ...prev]);
   };
 
   const updateProduct = (updatedProduct: Product) => {
-    setProducts(prev => {
-      const newProducts = prev.map(p => p.id === updatedProduct.id ? updatedProduct : p);
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
   const deleteProduct = (productId: string) => {
-    setProducts((prev) => {
-      const newProducts = prev.filter((p) => p.id !== productId);
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
   };
 
   const importProducts = (newProducts: Product[]) => {
-    try {
-      window.localStorage.setItem('products', JSON.stringify(newProducts));
-      setProducts(newProducts);
-    } catch (error) {
-      console.error("Failed to save imported products to localStorage:", error);
-    }
+    setProducts(newProducts);
   };
   
   const getProductById = (productId: string): Product | undefined => {
@@ -167,6 +148,9 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const saveProducts = () => {
+    // This function is now more of a reassurance for the user,
+    // as the useEffect hook already handles saving automatically.
+    // Calling it again is harmless.
     try {
       window.localStorage.setItem('products', JSON.stringify(products));
     } catch (error) {
