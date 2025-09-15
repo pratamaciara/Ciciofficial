@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import React, { useState, useRef, ChangeEvent } from 'react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useProducts } from '../context/ProductContext';
 import { useToast } from '../context/ToastContext';
@@ -7,9 +7,15 @@ import { Product } from '../types';
 import ProductForm from './ProductForm';
 import { formatCurrency } from '../utils/formatter';
 
+const SaveIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
 const AdminView: React.FC = () => {
   const { whatsAppNumber, setWhatsAppNumber } = useAdminSettings();
-  const { products, addProduct, updateProduct, deleteProduct, importProducts } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, importProducts, saveProducts } = useProducts();
   const { addToast } = useToast();
   const theme = useTheme();
 
@@ -30,24 +36,8 @@ const AdminView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setLocalWhatsAppNumber(whatsAppNumber);
-  }, [whatsAppNumber]);
-
-  useEffect(() => {
-    setLocalTheme({
-      storeName: theme.storeName,
-      storeDescription: theme.storeDescription,
-      instagramUrl: theme.instagramUrl,
-      facebookUrl: theme.facebookUrl,
-      tiktokUrl: theme.tiktokUrl,
-    });
-    setLocalPopupSettings(theme.popupSettings);
-  }, [theme]);
-
-
-  const handleSaveSettings = async () => {
-    await setWhatsAppNumber(localWhatsAppNumber);
+  const handleSaveSettings = () => {
+    setWhatsAppNumber(localWhatsAppNumber);
     addToast('Pengaturan dasar berhasil disimpan!');
   };
   
@@ -67,12 +57,11 @@ const AdminView: React.FC = () => {
     }
   };
 
-  const handleSaveTheme = async () => {
-      let settingsToUpdate: any = { ...localTheme };
+  const handleSaveTheme = () => {
+      theme.updateThemeSettings(localTheme);
       if (localBgImage) {
-          settingsToUpdate.backgroundImage = localBgImage;
+          theme.updateThemeSettings({ backgroundImage: localBgImage });
       }
-      await theme.updateThemeSettings(settingsToUpdate);
       addToast('Pengaturan tampilan disimpan!');
   };
   
@@ -87,17 +76,17 @@ const AdminView: React.FC = () => {
     }
   };
 
-  const handleSavePopupSettings = async () => {
+  const handleSavePopupSettings = () => {
     if (localPopupSettings.enabled && !localPopupSettings.linkProductId) {
         addToast('Pilih produk untuk ditautkan ke popup.', 'error');
         return;
     }
-    await theme.updateThemeSettings({ popupSettings: localPopupSettings });
+    theme.updateThemeSettings({ popupSettings: localPopupSettings });
     addToast('Pengaturan popup berhasil disimpan!');
   };
 
-  const handleResetBg = async () => {
-      await theme.resetBackgroundImage();
+  const handleResetBg = () => {
+      theme.resetBackgroundImage();
       setLocalBgImage(null);
       addToast('Background direset ke default.');
   };
@@ -121,13 +110,13 @@ const AdminView: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = (e) => {
         try {
           const text = e.target?.result;
           if (typeof text === 'string') {
             const importedData = JSON.parse(text);
-            if (Array.isArray(importedData) && importedData.every(p => p.name && typeof p.price !== 'undefined')) {
-               await importProducts(importedData);
+            if (Array.isArray(importedData) && importedData.every(p => p.id && p.name && typeof p.price !== 'undefined')) {
+               importProducts(importedData);
                addToast('Produk berhasil diimpor!');
             } else {
                throw new Error('Invalid file format');
@@ -141,18 +130,23 @@ const AdminView: React.FC = () => {
     }
   };
   
-  const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
-    if ('id' in productData) {
-      await updateProduct(productData);
+  const handleSaveProduct = (product: Product) => {
+    if (productToEdit) {
+      updateProduct(product);
       addToast('Produk berhasil diperbarui!');
     } else {
-      await addProduct(productData);
+      addProduct(product);
       addToast('Produk baru berhasil ditambahkan!');
     }
     setShowProductForm(false);
     setProductToEdit(null);
   };
   
+  const handleForceSaveProducts = () => {
+    saveProducts();
+    addToast('Perubahan pada daftar produk telah disimpan!');
+  };
+
   const handleCancelForm = () => {
     setShowProductForm(false);
     setProductToEdit(null);
@@ -167,13 +161,6 @@ const AdminView: React.FC = () => {
     setProductToEdit(product);
     setShowProductForm(true);
   };
-
-  const handleDeleteProduct = async (productId: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus produk ini?')) {
-        await deleteProduct(productId);
-        addToast('Produk berhasil dihapus.');
-    }
-  }
 
   return (
     <div className="space-y-8">
@@ -310,7 +297,7 @@ const AdminView: React.FC = () => {
                         <button onClick={() => handleEditClick(product)} className="font-semibold text-primary hover:text-secondary">
                             Edit
                         </button>
-                        <button onClick={() => handleDeleteProduct(product.id)} className="font-semibold text-red-500 hover:text-red-700">
+                        <button onClick={() => deleteProduct(product.id)} className="font-semibold text-red-500 hover:text-red-700">
                             Hapus
                         </button>
                     </div>
@@ -318,6 +305,15 @@ const AdminView: React.FC = () => {
             )) : <p className="text-gray-500">Belum ada produk.</p>}
         </div>
 
+        <div className="mt-6 border-t pt-4 flex justify-end">
+            <button 
+                onClick={handleForceSaveProducts} 
+                className="inline-flex items-center px-4 py-2 bg-secondary text-white rounded-md hover:bg-primary font-semibold shadow-sm transition-colors"
+            >
+                <SaveIcon />
+                Simpan Produk
+            </button>
+        </div>
       </div>
 
       {/* Data Management */}

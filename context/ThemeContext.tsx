@@ -1,7 +1,4 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { db } from '../firebase/config';
-import { doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 
 interface PopupSettings {
   enabled: boolean;
@@ -20,76 +17,69 @@ interface ThemeSettings {
 }
 
 interface ThemeContextType extends ThemeSettings {
-  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<void>;
-  resetBackgroundImage: () => Promise<void>;
-  loading: boolean;
+  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => void;
+  resetBackgroundImage: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const defaultSettings: ThemeSettings = {
-    storeName: 'CICI NYEMIL',
-    storeDescription: 'Yuk jajan di cici nyemil di jamin ketagihan',
-    instagramUrl: '',
-    facebookUrl: '',
-    tiktokUrl: '',
-    backgroundImage: '',
-    popupSettings: {
-        enabled: false,
-        imageUrl: '',
-        linkProductId: null,
+const getInitialThemeSettings = (): ThemeSettings => {
+    const defaultSettings = {
+        storeName: 'CICI NYEMIL',
+        storeDescription: 'Yuk jajan di cici nyemil di jamin ketagihan',
+        instagramUrl: '',
+        facebookUrl: '',
+        tiktokUrl: '',
+        backgroundImage: '',
+        popupSettings: {
+            enabled: false,
+            imageUrl: '',
+            linkProductId: null,
+        }
+    };
+
+    try {
+      const item = window.localStorage.getItem('themeSettings');
+      if (item) {
+        const storedSettings = JSON.parse(item);
+        // Merge stored settings with defaults to ensure new properties are present
+        return {
+          ...defaultSettings,
+          ...storedSettings,
+          popupSettings: {
+            ...defaultSettings.popupSettings,
+            ...(storedSettings.popupSettings || {})
+          }
+        };
+      }
+      return defaultSettings;
+    } catch (error) {
+      console.error(error);
+      return defaultSettings;
     }
-};
+}
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<ThemeSettings>(getInitialThemeSettings);
 
   useEffect(() => {
-    const settingsDocRef = doc(db, 'settings', 'theme');
-    const unsubscribe = onSnapshot(settingsDocRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Partial<ThemeSettings>;
-        // Merge with defaults to ensure all keys are present
-        setSettings(prev => ({
-          ...defaultSettings,
-          ...prev, // Keep current state to avoid flickering before new data
-          ...data,
-          popupSettings: { ...defaultSettings.popupSettings, ...(data.popupSettings || {}) }
-        }));
-      } else {
-        // If no settings in DB, use defaults
-        setSettings(defaultSettings);
-      }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching theme settings:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const updateThemeSettings = async (newSettings: Partial<ThemeSettings>) => {
     try {
-      const settingsDocRef = doc(db, 'settings', 'theme');
-      await setDoc(settingsDocRef, newSettings, { merge: true });
+      window.localStorage.setItem('themeSettings', JSON.stringify(settings));
     } catch (error) {
-      console.error("Error updating theme settings:", error);
+      console.error(error);
     }
+  }, [settings]);
+
+  const updateThemeSettings = (newSettings: Partial<ThemeSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
-  const resetBackgroundImage = async () => {
-    try {
-      const settingsDocRef = doc(db, 'settings', 'theme');
-      await updateDoc(settingsDocRef, { backgroundImage: '' });
-    } catch(error) {
-      console.error("Error resetting background image:", error);
-    }
+  const resetBackgroundImage = () => {
+    setSettings(prev => ({ ...prev, backgroundImage: '' }));
   }
 
   return (
-    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading }}>
+    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage }}>
       {children}
     </ThemeContext.Provider>
   );

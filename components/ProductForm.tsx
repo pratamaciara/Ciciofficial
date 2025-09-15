@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { formatCurrency } from '../utils/formatter';
 
 interface ProductFormProps {
-    onSave: (product: Product | Omit<Product, 'id'>) => void;
+    onSave: (product: Product) => void;
     onCancel: () => void;
     productToEdit?: Product | null;
 }
@@ -118,7 +118,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
         }
         const hasDiscount = discountType !== 'none' && discountValue > 0 && priceInput > calculatedPrice;
         
-        const productData = {
+        const newProduct: Product = {
+            id: productToEdit ? productToEdit.id : Date.now().toString(),
             name,
             price: calculatedPrice,
             originalPrice: hasDiscount ? priceInput : undefined,
@@ -127,12 +128,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
             whatsappImageUrl: whatsappImageUrl || undefined,
             variants: variants.filter(v => v.name.trim() !== '')
         };
-
-        if (productToEdit) {
-            onSave({ ...productData, id: productToEdit.id });
-        } else {
-            onSave(productData);
-        }
+        onSave(newProduct);
     };
 
     return (

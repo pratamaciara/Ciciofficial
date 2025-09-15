@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from './ProductCard';
@@ -6,7 +7,7 @@ import { Product } from '../types';
 type FilterType = 'all' | 'newest' | 'bestselling' | 'sale';
 
 const ProductList: React.FC = () => {
-  const { products, loading } = useProducts();
+  const { products } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
@@ -25,7 +26,7 @@ const ProductList: React.FC = () => {
     switch (activeFilter) {
       case 'newest':
         // Sort by ID (assuming it's a timestamp) descending for newest
-        processedProducts.sort((a, b) => (b.id > a.id ? -1 : 1));
+        processedProducts.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
         break;
       case 'bestselling':
         processedProducts.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
@@ -58,13 +59,6 @@ const ProductList: React.FC = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
     <div>
