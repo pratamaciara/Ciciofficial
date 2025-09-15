@@ -5,7 +5,6 @@ import Header from '../Header';
 import ProductList from '../ProductList';
 import CartView from '../CartView';
 import CheckoutView from '../CheckoutView';
-import AdminView from '../AdminView';
 import ToastContainer from '../ToastContainer';
 import ProductPreview from '../ProductPreview';
 import PromotionPopup from '../PromotionPopup';
