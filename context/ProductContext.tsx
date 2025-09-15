@@ -1,146 +1,99 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Product } from '../types';
+import { db } from '../firebase/config';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, writeBatch, query, orderBy } from 'firebase/firestore';
+import { useToast } from './ToastContext';
 
 interface ProductContextType {
   products: Product[];
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
-  importProducts: (newProducts: Product[]) => void;
+  loading: boolean;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+  importProducts: (newProducts: Product[]) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
-  saveProducts: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
-const initialProducts: Product[] = [
-    {
-        id: '1722444000001',
-        name: 'basreng cili oil',
-        description: 'Basreng (bakso goreng) renyah dengan bumbu chili oil pedas yang menggugah selera. Cemilan sempurna untuk menemani waktu santai Anda.',
-        price: 10000,
-        stock: 15,
-        category: 'Makanan Ringan',
-        imageUrl: 'https://storage.googleapis.com/static.aistudio.dev/1722444588825-0.png',
-        variants: []
-    },
-    {
-        id: '1722444000002',
-        name: 'ALPUKAT KOCOK',
-        description: 'Minuman alpukat kocok segar dengan topping keju melimpah. Manis, creamy, dan dijamin bikin ketagihan.',
-        price: 10000,
-        stock: 15,
-        category: 'Minuman',
-        imageUrl: 'https://storage.googleapis.com/static.aistudio.dev/1722444588998-1.png',
-        variants: []
-    }
-];
-
-const loadProductsFromStorage = (): Product[] => {
-  try {
-    const serializedProducts = window.localStorage.getItem('products');
-    if (serializedProducts === null || serializedProducts === '[]') { // Handle empty array explicitly
-      window.localStorage.setItem('products', JSON.stringify(initialProducts));
-      return initialProducts;
-    }
-    const storedProducts = JSON.parse(serializedProducts);
-    if (Array.isArray(storedProducts) && storedProducts.length > 0) {
-      return storedProducts;
-    }
-    // If stored is empty array, it will fall through and return initialProducts
-    window.localStorage.setItem('products', JSON.stringify(initialProducts));
-    return initialProducts;
-  } catch (error) {
-    console.error('Failed to parse product data from localStorage. Falling back.', error);
-    window.localStorage.setItem('products', JSON.stringify(initialProducts));
-    return initialProducts;
-  }
-};
-
-
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(loadProductsFromStorage);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { addToast } = useToast();
 
   useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'products' && event.newValue) {
-        try {
-          const newProducts = JSON.parse(event.newValue);
-          if (Array.isArray(newProducts)) {
-            setProducts(newProducts);
-          }
-        } catch (error) {
-          console.error("Failed to parse products from storage event:", error);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+    const productsCollectionRef = collection(db, 'products');
+    const q = query(productsCollectionRef, orderBy('name', 'asc'));
 
-  const addProduct = (product: Product) => {
-    setProducts((prev) => {
-      const newProducts = [product, ...prev];
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const productsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Product));
+      setProducts(productsData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      addToast('Gagal memuat data produk.', 'error');
+      setLoading(false);
     });
+
+    return () => unsubscribe();
+  }, [addToast]);
+
+  const addProduct = async (product: Omit<Product, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'products'), product);
+    } catch (error) {
+      console.error("Error adding product:", error);
+      addToast('Gagal menambahkan produk.', 'error');
+    }
   };
 
-  const updateProduct = (updatedProduct: Product) => {
-    setProducts(prev => {
-        const newProducts = prev.map(p => p.id === updatedProduct.id ? updatedProduct : p);
-        try {
-          window.localStorage.setItem('products', JSON.stringify(newProducts));
-        } catch (error) {
-          console.error("Failed to save products to localStorage:", error);
-        }
-        return newProducts;
-    });
+  const updateProduct = async (updatedProduct: Product) => {
+    try {
+      const productDocRef = doc(db, 'products', updatedProduct.id);
+      // Make a copy and remove the id field before updating
+      const { id, ...productData } = updatedProduct;
+      await updateDoc(productDocRef, productData);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      addToast('Gagal memperbarui produk.', 'error');
+    }
   };
 
-  const deleteProduct = (productId: string) => {
-    setProducts((prev) => {
-      const newProducts = prev.filter((p) => p.id !== productId);
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+  const deleteProduct = async (productId: string) => {
+    try {
+      const productDocRef = doc(db, 'products', productId);
+      await deleteDoc(productDocRef);
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      addToast('Gagal menghapus produk.', 'error');
+    }
   };
 
-  const importProducts = (newProducts: Product[]) => {
-    setProducts(() => {
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to import/save products to localStorage:", error);
-      }
-      return newProducts;
+  const importProducts = async (newProducts: Product[]) => {
+    const batch = writeBatch(db);
+    const productsCollection = collection(db, 'products');
+    newProducts.forEach((product) => {
+      const docRef = product.id ? doc(productsCollection, product.id) : doc(productsCollection);
+      batch.set(docRef, product);
     });
+    try {
+      await batch.commit();
+    } catch (error) {
+       console.error("Error importing products:", error);
+       addToast('Gagal mengimpor produk.', 'error');
+    }
   };
   
   const getProductById = (productId: string): Product | undefined => {
     return products.find(p => p.id === productId);
   };
 
-  const saveProducts = () => {
-    try {
-      window.localStorage.setItem('products', JSON.stringify(products));
-    } catch (error) {
-      console.error("Failed to save products to localStorage:", error);
-    }
-  };
-
   return (
-    <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, importProducts, getProductById, saveProducts }}>
+    <ProductContext.Provider value={{ products, loading, addProduct, updateProduct, deleteProduct, importProducts, getProductById }}>
       {children}
     </ProductContext.Provider>
   );

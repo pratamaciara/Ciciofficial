@@ -17,11 +17,11 @@ const LoadingSpinner: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <AdminSettingsProvider>
-      <ProductProvider>
-        <CartProvider>
-          <ToastProvider>
-            <ThemeProvider>
+    <ToastProvider>
+      <ThemeProvider>
+        <AdminSettingsProvider>
+          <ProductProvider>
+            <CartProvider>
               <HashRouter>
                 <Suspense fallback={<LoadingSpinner />}>
                   <Routes>
@@ -30,11 +30,11 @@ const App: React.FC = () => {
                   </Routes>
                 </Suspense>
               </HashRouter>
-            </ThemeProvider>
-          </ToastProvider>
-        </CartProvider>
-      </ProductProvider>
-    </AdminSettingsProvider>
+            </CartProvider>
+          </ProductProvider>
+        </AdminSettingsProvider>
+      </ThemeProvider>
+    </ToastProvider>
   );
 };
 
