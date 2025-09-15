@@ -60,23 +60,62 @@ const initialProducts: Product[] = [
     }
 ];
 
+const loadProductsFromStorage = (): Product[] => {
+  try {
+    const serializedProducts = window.localStorage.getItem('products');
 
-export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const item = window.localStorage.getItem('products');
-      // If there's a stored item, parse it. This handles an empty array correctly.
-      if (item) {
-        return JSON.parse(item);
-      }
-      // Only on first load, populate with initial products and save to storage.
+    // Case 1: No data in localStorage. Initialize with default products.
+    if (serializedProducts === null) {
       window.localStorage.setItem('products', JSON.stringify(initialProducts));
       return initialProducts;
-    } catch (error) {
-      console.error("Failed to load products from localStorage:", error);
-      return initialProducts;
     }
-  });
+
+    // Case 2: Data is present. Try to parse it.
+    const storedProducts = JSON.parse(serializedProducts);
+
+    // Case 3: Parsed data is a valid array. Use it.
+    if (Array.isArray(storedProducts)) {
+      return storedProducts;
+    }
+    
+    // Case 4: Parsed data is not an array. Fallback to initial products.
+    console.warn('Stored product data is not an array. Falling back to initial products.');
+    window.localStorage.setItem('products', JSON.stringify(initialProducts));
+    return initialProducts;
+
+  } catch (error) {
+    // Case 5: Parsing failed (invalid JSON). Fallback to initial products.
+    console.error('Failed to parse product data from localStorage. Falling back.', error);
+    window.localStorage.setItem('products', JSON.stringify(initialProducts));
+    return initialProducts;
+  }
+};
+
+
+export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [products, setProducts] = useState<Product[]>(loadProductsFromStorage);
+
+  // Effect for cross-tab state synchronization
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'products' && event.newValue) {
+        try {
+          const newProducts = JSON.parse(event.newValue);
+          if (Array.isArray(newProducts)) {
+            setProducts(newProducts);
+          }
+        } catch (error) {
+          console.error("Failed to parse products from storage event:", error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const addProduct = (product: Product) => {
     setProducts((prev) => {
