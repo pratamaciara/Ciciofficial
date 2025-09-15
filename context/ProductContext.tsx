@@ -65,36 +65,62 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const item = window.localStorage.getItem('products');
-      return item ? JSON.parse(item) : initialProducts;
+      // If there's data, parse it. If not, or if it's empty, use initialProducts.
+      if (item && item !== '[]') {
+        return JSON.parse(item);
+      }
+      // On first load, populate with initial products and save to storage.
+      window.localStorage.setItem('products', JSON.stringify(initialProducts));
+      return initialProducts;
     } catch (error) {
-      console.error(error);
+      console.error("Failed to load products from localStorage:", error);
       return initialProducts;
     }
   });
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('products', JSON.stringify(products));
-    } catch (error) {
-      console.error(error);
-    }
-  }, [products]);
-
   const addProduct = (product: Product) => {
-    // Add new product to the beginning of the array to make it the newest
-    setProducts((prev) => [product, ...prev]);
+    setProducts((prev) => {
+      const newProducts = [product, ...prev];
+      try {
+        window.localStorage.setItem('products', JSON.stringify(newProducts));
+      } catch (error) {
+        console.error("Failed to save products to localStorage:", error);
+      }
+      return newProducts;
+    });
   };
 
   const updateProduct = (updatedProduct: Product) => {
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    setProducts(prev => {
+      const newProducts = prev.map(p => p.id === updatedProduct.id ? updatedProduct : p);
+      try {
+        window.localStorage.setItem('products', JSON.stringify(newProducts));
+      } catch (error) {
+        console.error("Failed to save products to localStorage:", error);
+      }
+      return newProducts;
+    });
   };
 
   const deleteProduct = (productId: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    setProducts((prev) => {
+      const newProducts = prev.filter((p) => p.id !== productId);
+      try {
+        window.localStorage.setItem('products', JSON.stringify(newProducts));
+      } catch (error) {
+        console.error("Failed to save products to localStorage:", error);
+      }
+      return newProducts;
+    });
   };
 
   const importProducts = (newProducts: Product[]) => {
-    setProducts(newProducts);
+    try {
+      window.localStorage.setItem('products', JSON.stringify(newProducts));
+      setProducts(newProducts);
+    } catch (error) {
+      console.error("Failed to save imported products to localStorage:", error);
+    }
   };
   
   const getProductById = (productId: string): Product | undefined => {
