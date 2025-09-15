@@ -25,8 +25,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const getInitialThemeSettings = (): ThemeSettings => {
     const defaultSettings = {
-        storeName: 'TokoKoo',
-        storeDescription: 'Deskripsi singkat toko Anda.',
+        storeName: 'CICI NYEMIL',
+        storeDescription: 'Yuk jajan di cici nyemil di jamin ketagihan',
         instagramUrl: '',
         facebookUrl: '',
         tiktokUrl: '',
