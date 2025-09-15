@@ -1,13 +1,21 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import Header from '../Header';
-import ProductList from '../ProductList';
-import CartView from '../CartView';
-import CheckoutView from '../CheckoutView';
 import ToastContainer from '../ToastContainer';
-import ProductPreview from '../ProductPreview';
 import PromotionPopup from '../PromotionPopup';
+
+// Lazy load page-level components for better code splitting
+const ProductList = lazy(() => import('../ProductList'));
+const ProductPreview = lazy(() => import('../ProductPreview'));
+const CartView = lazy(() => import('../CartView'));
+const CheckoutView = lazy(() => import('../CheckoutView'));
+
+const LoadingSpinner: React.FC = () => (
+    <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+);
 
 const UserLayout: React.FC = () => {
   const { backgroundImage } = useTheme();
@@ -25,12 +33,14 @@ const UserLayout: React.FC = () => {
     <div className="bg-gray-50 min-h-screen font-sans" style={appStyle}>
       <Header />
       <main className="container mx-auto p-4 pb-24">
-        <Routes>
-          <Route path="/" element={<ProductList />} />
-          <Route path="/product/:productId" element={<ProductPreview />} />
-          <Route path="/cart" element={<CartView />} />
-          <Route path="/checkout" element={<CheckoutView />} />
-        </Routes>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<ProductList />} />
+            <Route path="/product/:productId" element={<ProductPreview />} />
+            <Route path="/cart" element={<CartView />} />
+            <Route path="/checkout" element={<CheckoutView />} />
+          </Routes>
+        </Suspense>
       </main>
       <ToastContainer />
       <PromotionPopup />
