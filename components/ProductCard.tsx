@@ -81,11 +81,21 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 <p className="text-gray-500 line-through text-sm">{formatCurrency(finalOriginalPrice)}</p>
              )}
           </div>
-           {!isOutOfStock && (
-            <p className={`text-sm mt-1 ${product.stock <= 10 ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
-              Sisa stok: {product.stock}
-            </p>
-          )}
+          <div className="flex justify-between items-center text-sm mt-1">
+            {!isOutOfStock && (
+              <p className={`${product.stock <= 10 ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
+                Sisa stok: {product.stock}
+              </p>
+            )}
+            {product.salesCount && product.salesCount > 0 && !isOutOfStock && (
+                <div className="flex items-center text-gray-500" title="Jumlah produk terjual">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45.385c-.345.675-.865 1.228-1.462 1.755C8.893 5.23 8.358 5.765 8 6.5c-.358.735-.705 1.625-1.003 2.53C6.695 10.035 6.5 11.235 6.5 12.5c0 1.265.195 2.465.497 3.47.302.995.649 1.885 1.003 2.53.358.735.893 1.27 1.49 1.795.597.527 1.117 1.08 1.462 1.755a1 1 0 001.45.385c.345-.675.865-1.228 1.462-1.755.597-.527 1.132-1.06 1.49-1.795.354-.645.69-1.535 1.003-2.53.302-1.005.497-2.205.497-3.47 0-1.265-.195-2.465-.497-3.47-.302-.995-.649-1.885-1.003-2.53-.358-.735-.893-1.27-1.49-1.795-.597-.527-1.117-1.08-1.462-1.755a1 1 0 00-1.45-.385z" clipRule="evenodd" />
+                    </svg>
+                    <span>Terjual {product.salesCount}</span>
+                </div>
+            )}
+          </div>
           <div className="mt-4 space-y-3 flex-grow">
             {product.variants.length > 0 && (
               <div>

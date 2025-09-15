@@ -65,11 +65,11 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const item = window.localStorage.getItem('products');
-      // If there's data, parse it. If not, or if it's empty, use initialProducts.
-      if (item && item !== '[]') {
+      // If there's a stored item, parse it. This handles an empty array correctly.
+      if (item) {
         return JSON.parse(item);
       }
-      // On first load, populate with initial products and save to storage.
+      // Only on first load, populate with initial products and save to storage.
       window.localStorage.setItem('products', JSON.stringify(initialProducts));
       return initialProducts;
     } catch (error) {
