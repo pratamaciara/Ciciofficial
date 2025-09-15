@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useProducts } from '../context/ProductContext';
@@ -8,9 +7,15 @@ import { Product } from '../types';
 import ProductForm from './ProductForm';
 import { formatCurrency } from '../utils/formatter';
 
+const SaveIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
 const AdminView: React.FC = () => {
   const { whatsAppNumber, setWhatsAppNumber } = useAdminSettings();
-  const { products, addProduct, updateProduct, deleteProduct, importProducts } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, importProducts, saveProducts } = useProducts();
   const { addToast } = useToast();
   const theme = useTheme();
 
@@ -135,6 +140,11 @@ const AdminView: React.FC = () => {
     }
     setShowProductForm(false);
     setProductToEdit(null);
+  };
+  
+  const handleForceSaveProducts = () => {
+    saveProducts();
+    addToast('Perubahan pada daftar produk telah disimpan!');
   };
 
   const handleCancelForm = () => {
@@ -293,6 +303,16 @@ const AdminView: React.FC = () => {
                     </div>
                 </div>
             )) : <p className="text-gray-500">Belum ada produk.</p>}
+        </div>
+
+        <div className="mt-6 border-t pt-4 flex justify-end">
+            <button 
+                onClick={handleForceSaveProducts} 
+                className="inline-flex items-center px-4 py-2 bg-secondary text-white rounded-md hover:bg-primary font-semibold shadow-sm transition-colors"
+            >
+                <SaveIcon />
+                Simpan Produk
+            </button>
         </div>
       </div>
 

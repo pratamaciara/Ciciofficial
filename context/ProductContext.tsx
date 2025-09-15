@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Product } from '../types';
 
@@ -9,6 +8,7 @@ interface ProductContextType {
   deleteProduct: (productId: string) => void;
   importProducts: (newProducts: Product[]) => void;
   getProductById: (productId: string) => Product | undefined;
+  saveProducts: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
@@ -127,8 +127,16 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     return products.find(p => p.id === productId);
   };
 
+  const saveProducts = () => {
+    try {
+      window.localStorage.setItem('products', JSON.stringify(products));
+    } catch (error) {
+      console.error("Failed to save products to localStorage:", error);
+    }
+  };
+
   return (
-    <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, importProducts, getProductById }}>
+    <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, importProducts, getProductById, saveProducts }}>
       {children}
     </ProductContext.Provider>
   );
