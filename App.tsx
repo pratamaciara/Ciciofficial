@@ -45,36 +45,36 @@ const ConfigurationError = () => (
 );
 
 const PermissionError = () => {
-    const sqlScript = `-- 1. Izinkan menambah (INSERT) produk baru
-CREATE POLICY "Allow anonymous inserts for products"
-ON public.products
-FOR INSERT
-WITH CHECK (true);
+    const sqlScript = `-- SALIN DAN JALANKAN SEMUA KODE DI BAWAH INI --
 
--- 2. Izinkan mengubah (UPDATE) produk yang ada
-CREATE POLICY "Allow anonymous updates for products"
-ON public.products
-FOR UPDATE
-USING (true)
-WITH CHECK (true);
+-- === BAGIAN 1: IZIN UNTUK MENGELOLA PRODUK & PENGATURAN ===
+-- Izin ini diperlukan agar Panel Admin bisa menambah, mengubah, dan menghapus data.
 
--- 3. Izinkan menghapus (DELETE) produk
-CREATE POLICY "Allow anonymous deletes for products"
-ON public.products
-FOR DELETE
-USING (true);
+-- Memberi izin untuk MENAMBAH (INSERT) produk baru
+CREATE POLICY "Allow anonymous inserts for products" ON public.products FOR INSERT WITH CHECK (true);
 
--- 4. Izinkan menambah/mengubah (UPSERT) pengaturan
-CREATE POLICY "Allow anonymous inserts for settings"
-ON public.settings
-FOR INSERT
-WITH CHECK (true);
+-- Memberi izin untuk MENGUBAH (UPDATE) produk yang ada
+CREATE POLICY "Allow anonymous updates for products" ON public.products FOR UPDATE USING (true) WITH CHECK (true);
 
-CREATE POLICY "Allow anonymous updates for settings"
-ON public.settings
-FOR UPDATE
-USING (true)
-WITH CHECK (true);
+-- Memberi izin untuk MENGHAPUS (DELETE) produk
+CREATE POLICY "Allow anonymous deletes for products" ON public.products FOR DELETE USING (true);
+
+-- Memberi izin untuk MENAMBAH/MENGUBAH (UPSERT) pengaturan
+CREATE POLICY "Allow anonymous inserts for settings" ON public.settings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow anonymous updates for settings" ON public.settings FOR UPDATE USING (true) WITH CHECK (true);
+
+
+-- === BAGIAN 2: IZIN UNTUK MENGELOLA GAMBAR PRODUK ===
+-- Izin ini diperlukan agar Panel Admin bisa mengunggah dan menghapus gambar.
+
+-- Memberi izin semua orang untuk MELIHAT gambar
+CREATE POLICY "Allow public read access on product images" ON storage.objects FOR SELECT USING ( bucket_id = 'product-images' );
+
+-- Memberi izin aplikasi untuk MENGUNGGAH gambar
+CREATE POLICY "Allow anonymous uploads on product images" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'product-images' );
+
+-- Memberi izin aplikasi untuk MENGHAPUS gambar
+CREATE POLICY "Allow anonymous deletes on product images" ON storage.objects FOR DELETE USING ( bucket_id = 'product-images' );
 `;
   return (
     <div className="bg-orange-50 min-h-screen flex items-center justify-center p-4">
@@ -95,7 +95,7 @@ WITH CHECK (true);
           <textarea
             readOnly
             value={sqlScript}
-            rows={10}
+            rows={15}
             className="w-full p-3 font-mono text-sm bg-gray-900 text-green-400 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
           <button

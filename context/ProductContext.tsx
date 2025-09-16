@@ -6,9 +6,9 @@ interface ProductContextType {
   products: Product[];
   loading: boolean;
   error: any | null; // Expose error state
-  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
-  updateProduct: (product: Product) => Promise<void>;
-  deleteProduct: (productId: string) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<{ success: boolean; error?: any }>;
+  updateProduct: (product: Product) => Promise<{ success: boolean; error?: any }>;
+  deleteProduct: (productId: string) => Promise<{ success: boolean; error?: any }>;
   getProductById: (productId: string) => Product | undefined;
 }
 
@@ -48,8 +48,9 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addProduct = async (productData: Omit<Product, 'id'>) => {
     setError(null);
     if (!supabase) {
-      console.error("Supabase client not initialized. Cannot add product.");
-      return;
+      const err = new Error("Supabase client not initialized. Cannot add product.");
+      console.error(err);
+      return { success: false, error: err };
     }
     const productWithId = { ...productData, id: Date.now().toString() };
     
@@ -61,15 +62,19 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error('Error adding product:', insertError);
       setError(insertError);
       setProducts(prev => prev.filter(p => p.id !== productWithId.id));
+      return { success: false, error: insertError };
     }
+    return { success: true };
   };
 
   const updateProduct = async (updatedProduct: Product) => {
     setError(null);
     if (!supabase) {
-      console.error("Supabase client not initialized. Cannot update product.");
-      return;
+      const err = new Error("Supabase client not initialized. Cannot update product.");
+      console.error(err);
+      return { success: false, error: err };
     }
+    const originalProducts = products;
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
 
     const { error: updateError } = await supabase
@@ -80,17 +85,22 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (updateError) {
       console.error('Error updating product:', updateError);
       setError(updateError);
+      setProducts(originalProducts); // Rollback
+      return { success: false, error: updateError };
     }
+    return { success: true };
   };
 
   const deleteProduct = async (productId: string) => {
     setError(null);
     if (!supabase) {
-      console.error("Supabase client not initialized. Cannot delete product.");
-      return;
+       const err = new Error("Supabase client not initialized. Cannot delete product.");
+       console.error(err);
+       return { success: false, error: err };
     }
 
     const productToDelete = products.find(p => p.id === productId);
+    const originalProducts = products;
     
     setProducts(prev => prev.filter(p => p.id !== productId));
     
@@ -102,9 +112,12 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (dbError) {
       console.error('Error deleting product from database:', dbError);
       setError(dbError);
+      setProducts(originalProducts); // Rollback
+      return { success: false, error: dbError };
     }
 
-    if (productToDelete && productToDelete.imageUrl && !dbError) {
+    // Continue to delete storage image even if DB deletion was successful
+    if (productToDelete && productToDelete.imageUrl) {
       try {
         const url = new URL(productToDelete.imageUrl);
         const filePath = url.pathname.split('/product-images/')[1];
@@ -112,12 +125,14 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
           const { error: storageError } = await supabase.storage.from('product-images').remove([filePath]);
           if (storageError) {
             console.error('Error deleting image from storage:', storageError);
+            // Non-critical error, don't return failure for this
           }
         }
       } catch (e) {
         console.error("Could not parse image URL to delete from storage:", e);
       }
     }
+    return { success: true };
   };
 
   const getProductById = (productId: string): Product | undefined => {

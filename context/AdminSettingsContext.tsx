@@ -3,7 +3,7 @@ import { supabase } from '../utils/formatter';
 
 interface AdminSettingsContextType {
   whatsAppNumber: string;
-  setWhatsAppNumber: (number: string) => Promise<void>;
+  setWhatsAppNumber: (number: string) => Promise<{ success: boolean; error?: any; }>;
   loading: boolean;
 }
 
@@ -43,8 +43,9 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
   const setWhatsAppNumber = async (number: string) => {
     if (!supabase) {
       console.error("Supabase client not initialized. Cannot save settings.");
-      return;
+      return { success: false, error: new Error("Supabase client not initialized") };
     }
+    const oldNumber = whatsAppNumber;
     setWhatsAppNumberState(number); // Optimistic update
     const { error } = await supabase
       .from('settings')
@@ -52,8 +53,10 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
 
     if (error) {
       console.error("Error saving WhatsApp number:", error.message || error);
-      // Optional: handle rollback on error
+      setWhatsAppNumberState(oldNumber); // Rollback on error
+      return { success: false, error };
     }
+    return { success: true };
   };
 
   return (

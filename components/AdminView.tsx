@@ -1,4 +1,3 @@
-
 import React, { useState, ChangeEvent } from 'react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useProducts } from '../context/ProductContext';
@@ -44,8 +43,12 @@ const AdminView: React.FC = () => {
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
-    await setWhatsAppNumber(localWhatsAppNumber);
-    addToast('Pengaturan dasar berhasil disimpan!');
+    const result = await setWhatsAppNumber(localWhatsAppNumber);
+    if (result.success) {
+      addToast('Pengaturan dasar berhasil disimpan!');
+    } else {
+      addToast('Gagal menyimpan. Periksa izin database Anda.', 'error');
+    }
     setIsSaving(false);
   };
   
@@ -67,8 +70,12 @@ const AdminView: React.FC = () => {
 
   const handleSaveTheme = async () => {
       setIsSaving(true);
-      await theme.updateThemeSettings(localTheme);
-      addToast('Pengaturan tampilan disimpan!');
+      const result = await theme.updateThemeSettings(localTheme);
+      if (result.success) {
+        addToast('Pengaturan tampilan disimpan!');
+      } else {
+        addToast('Gagal menyimpan. Periksa izin database Anda.', 'error');
+      }
       setIsSaving(false);
   };
   
@@ -89,8 +96,12 @@ const AdminView: React.FC = () => {
         return;
     }
     setIsSaving(true);
-    await theme.updateThemeSettings({ popupSettings: localPopupSettings });
-    addToast('Pengaturan popup disimpan!');
+    const result = await theme.updateThemeSettings({ popupSettings: localPopupSettings });
+    if (result.success) {
+      addToast('Pengaturan popup disimpan!');
+    } else {
+      addToast('Gagal menyimpan. Periksa izin database Anda.', 'error');
+    }
     setIsSaving(false);
   };
 
@@ -101,15 +112,28 @@ const AdminView: React.FC = () => {
 
   const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
     setIsSaving(true);
+    let result;
     if ('id' in productData && productToEdit) {
-      await updateProduct(productData);
-      addToast('Produk berhasil diperbarui!');
+      result = await updateProduct(productData);
+      if (result.success) {
+        addToast('Produk berhasil diperbarui!');
+      }
     } else {
-      await addProduct(productData as Omit<Product, 'id'>);
-      addToast('Produk baru berhasil ditambahkan!');
+      result = await addProduct(productData as Omit<Product, 'id'>);
+      if (result.success) {
+        addToast('Produk baru berhasil ditambahkan!');
+      }
     }
-    setShowProductForm(false);
-    setProductToEdit(null);
+
+    if (result.success) {
+      setShowProductForm(false);
+      setProductToEdit(null);
+    } else {
+      const errorMessage = (result.error?.code === '42501')
+        ? 'Gagal menyimpan. Izin database ditolak.'
+        : 'Gagal menyimpan produk.';
+      addToast(errorMessage, 'error');
+    }
     setIsSaving(false);
   };
 
@@ -122,8 +146,12 @@ const AdminView: React.FC = () => {
             });
             addToast("Popup promosi dinonaktifkan karena produk terkait dihapus.", "error");
         }
-        await deleteProduct(productId);
-        addToast("Produk berhasil dihapus.");
+        const result = await deleteProduct(productId);
+        if (result.success) {
+          addToast("Produk berhasil dihapus.");
+        } else {
+          addToast("Gagal menghapus produk. Cek izin database Anda.", "error");
+        }
     }
   };
   

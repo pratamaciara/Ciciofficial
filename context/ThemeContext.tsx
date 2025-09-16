@@ -18,8 +18,8 @@ interface ThemeSettings {
 }
 
 interface ThemeContextType extends ThemeSettings {
-  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<void>;
-  resetBackgroundImage: () => Promise<void>;
+  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<{ success: boolean; error?: any; }>;
+  resetBackgroundImage: () => Promise<{ success: boolean; error?: any; }>;
   loading: boolean;
 }
 
@@ -70,9 +70,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   
   const updateThemeSettings = async (newSettings: Partial<ThemeSettings>) => {
     if (!supabase) {
-      console.error("Supabase client not initialized. Cannot save theme.");
-      return;
+      const err = new Error("Supabase client not initialized. Cannot save theme.");
+      console.error(err);
+      return { success: false, error: err };
     }
+    const oldSettings = settings;
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings); // Optimistic update
 
@@ -82,16 +84,20 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     if (error) {
       console.error("Error saving theme settings:", error.message || error);
+      setSettings(oldSettings); // Rollback
+      return { success: false, error };
     }
+    return { success: true };
   };
 
   const resetBackgroundImage = async () => {
-    await updateThemeSettings({ backgroundImage: '' });
+    return await updateThemeSettings({ backgroundImage: '' });
   }
 
   return (
     <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading }}>
       {children}
+    {/* FIX: Corrected closing tag from Theme.Provider to ThemeContext.Provider */}
     </ThemeContext.Provider>
   );
 };
