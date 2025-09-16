@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, Variant } from '../types';
 import { GoogleGenAI } from "@google/genai";
-import { formatCurrency } from '../utils/formatter';
+import { formatCurrency, supabase } from '../utils/formatter';
 
 interface ProductFormProps {
     onSave: (product: Product | Omit<Product, 'id'>) => void;
@@ -34,14 +34,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
     const [isGenerating, setIsGenerating] = useState(false);
     const [imageUrl, setImageUrl] = useState(productToEdit?.imageUrl || '');
     const [whatsappImageUrl, setWhatsappImageUrl] = useState(productToEdit?.whatsappImageUrl || '');
+    const [isUploading, setIsUploading] = useState(false);
     const [variants, setVariants] = useState<Variant[]>(
         productToEdit?.variants && productToEdit.variants.length > 0
             ? productToEdit.variants
             : [{ id: Date.now().toString(), name: '', priceModifier: 0 }]
     );
-    
-    const [imageUrlError, setImageUrlError] = useState('');
-    const [whatsappImageUrlError, setWhatsappImageUrlError] = useState('');
 
     useEffect(() => {
         let finalPrice = priceInput;
@@ -52,36 +50,41 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
         }
         setCalculatedPrice(Math.max(0, Math.round(finalPrice)));
     }, [priceInput, discountType, discountValue]);
-
-    useEffect(() => {
-        if (imageUrl.startsWith('data:image')) {
-            setImageUrlError('Ini hanya preview lokal. Gunakan URL publik agar gambar dapat dilihat semua orang.');
-        } else {
-            setImageUrlError('');
-        }
-    }, [imageUrl]);
-
-    useEffect(() => {
-        if (whatsappImageUrl.startsWith('data:image')) {
-            setWhatsappImageUrlError('Ini hanya preview lokal. Gunakan URL publik atau kosongkan.');
-        } else {
-            setWhatsappImageUrlError('');
-        }
-    }, [whatsappImageUrl]);
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setImageState: React.Dispatch<React.SetStateAction<string>>) => {
+    
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, setImageState: React.Dispatch<React.SetStateAction<string>>) => {
         const file = e.target.files?.[0];
-        if (file) {
+        if (file && supabase) {
             if (!file.type.startsWith('image/')) {
                 alert('Harap pilih file gambar yang valid.');
                 e.target.value = ''; // Reset file input
                 return;
             }
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImageState(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            
+            setIsUploading(true);
+            const fileName = `${Date.now()}-${file.name}`;
+            const filePath = `public/${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('product-images')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                console.error('Error uploading image:', uploadError);
+                alert('Gagal mengunggah gambar. Coba lagi.');
+                setIsUploading(false);
+                return;
+            }
+
+            const { data } = supabase.storage
+                .from('product-images')
+                .getPublicUrl(filePath);
+
+            if (data.publicUrl) {
+                setImageState(data.publicUrl);
+            } else {
+                 alert('Gagal mendapatkan URL gambar. Coba lagi.');
+            }
+            setIsUploading(false);
         }
     };
 
@@ -138,8 +141,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (imageUrlError || whatsappImageUrlError || !name || !imageUrl) {
-             console.error("Attempted to save with invalid data.");
+        if (!name || !imageUrl) {
+             alert("Nama produk dan gambar utama wajib diisi.");
              return;
         }
         
@@ -162,7 +165,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
         }
     };
     
-    const isSaveDisabled = !!imageUrlError || !!whatsappImageUrlError || !name.trim() || !imageUrl;
+    const isSaveDisabled = !name.trim() || !imageUrl || isUploading;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -216,62 +219,29 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
             </div>
             
             <div className="border-t pt-4">
-                <label className="block text-sm font-medium text-gray-700">URL Gambar Utama <span className="text-red-500">*</span></label>
-                <div className="flex items-center space-x-2 mt-1">
-                    <input 
-                        type="url" 
-                        value={imageUrl.startsWith('data:image') ? '' : imageUrl}
-                        onChange={e => setImageUrl(e.target.value)}
-                        placeholder="https://.../gambar.png"
-                        required 
-                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-primary focus:border-primary" 
-                    />
-                    <label htmlFor="image-upload" className="cursor-pointer text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                        Upload File
-                    </label>
-                    <input 
-                        id="image-upload"
-                        type="file" 
-                        accept="image/*"
-                        onChange={e => handleImageUpload(e, setImageUrl)}
-                        className="hidden"
-                    />
-                </div>
-                {imageUrlError && (
-                    <div className="mt-2 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
-                        <strong>Error:</strong> {imageUrlError} Upload gambar ke <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" className="font-bold underline">postimages.org</a>, lalu salin & tempel 'Direct Link' ke kolom URL di atas.
-                    </div>
-                )}
-                {imageUrl && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
+                <label className="block text-sm font-medium text-gray-700">Gambar Utama <span className="text-red-500">*</span></label>
+                <input 
+                    id="image-upload"
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => handleImageUpload(e, setImageUrl)}
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                />
+                {isUploading && <p className="text-sm text-gray-500 mt-2">Mengunggah gambar...</p>}
+                {imageUrl && !isUploading && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">URL Gambar WA (Opsional)</label>
-                <div className="flex items-center space-x-2 mt-1">
-                    <input 
-                        type="url" 
-                        value={whatsappImageUrl.startsWith('data:image') ? '' : whatsappImageUrl}
-                        onChange={e => setWhatsappImageUrl(e.target.value)}
-                        placeholder="https://.../gambar-wa.png"
-                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-primary focus:border-primary" 
-                    />
-                    <label htmlFor="wa-image-upload" className="cursor-pointer text-sm font-medium text-primary hover:underline whitespace-nowrap">
-                        Upload File
-                    </label>
-                    <input 
-                        id="wa-image-upload"
-                        type="file" 
-                        accept="image/*"
-                        onChange={e => handleImageUpload(e, setWhatsappImageUrl)}
-                        className="hidden"
-                    />
-                </div>
-                {whatsappImageUrlError && (
-                     <div className="mt-2 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
-                        <strong>Error:</strong> {whatsappImageUrlError}
-                    </div>
-                )}
-                {whatsappImageUrl && <img src={whatsappImageUrl} alt="Preview WA" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
+                <label className="block text-sm font-medium text-gray-700">Gambar WA (Opsional)</label>
+                 <input 
+                    id="wa-image-upload"
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => handleImageUpload(e, setWhatsappImageUrl)}
+                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                />
+                {isUploading && <p className="text-sm text-gray-500 mt-2">Mengunggah gambar...</p>}
+                {whatsappImageUrl && !isUploading && <img src={whatsappImageUrl} alt="Preview WA" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
             </div>
 
             <div className="border-t pt-4 space-y-2">
@@ -325,7 +295,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
                     disabled={isSaveDisabled}
                     className={`px-4 py-2 text-white rounded-md transition-colors ${isSaveDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
                 >
-                    Simpan Produk
+                    {isUploading ? 'Mengunggah...' : 'Simpan Produk'}
                 </button>
             </div>
         </form>

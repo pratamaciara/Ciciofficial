@@ -84,17 +84,36 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       console.error("Supabase client not initialized. Cannot delete product.");
       return;
     }
+
+    const productToDelete = products.find(p => p.id === productId);
+    
      // Optimistic update
     setProducts(prev => prev.filter(p => p.id !== productId));
     
-    const { error } = await supabase
+    const { error: dbError } = await supabase
       .from('products')
       .delete()
       .eq('id', productId);
 
-    if (error) {
-      console.error('Error deleting product:', error.message || error);
+    if (dbError) {
+      console.error('Error deleting product from database:', dbError.message || dbError);
        // Optional: Rollback on error by re-fetching data
+    }
+
+    // After successfully deleting from DB, delete from storage
+    if (productToDelete && productToDelete.imageUrl && !dbError) {
+      try {
+        const url = new URL(productToDelete.imageUrl);
+        const filePath = url.pathname.split('/product-images/')[1];
+        if (filePath) {
+          const { error: storageError } = await supabase.storage.from('product-images').remove([filePath]);
+          if (storageError) {
+            console.error('Error deleting image from storage:', storageError.message || storageError);
+          }
+        }
+      } catch (e) {
+        console.error("Could not parse image URL to delete from storage:", e);
+      }
     }
   };
 

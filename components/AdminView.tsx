@@ -115,6 +115,13 @@ const AdminView: React.FC = () => {
 
   const handleDeleteProduct = async (productId: string) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
+        // Safety check for popup
+        if (theme.popupSettings.enabled && theme.popupSettings.linkProductId === productId) {
+            await theme.updateThemeSettings({
+                popupSettings: { ...theme.popupSettings, enabled: false, linkProductId: null }
+            });
+            addToast("Popup promosi dinonaktifkan karena produk terkait dihapus.", "error");
+        }
         await deleteProduct(productId);
         addToast("Produk berhasil dihapus.");
     }
