@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { formatCurrency, supabase } from '../utils/formatter';
 
 interface ProductFormProps {
-    onSave: (product: Product | Omit<Product, 'id'>) => void;
+    onSave: (product: Product | Omit<Product, 'id' | 'created_at'>) => void;
     onCancel: () => void;
     productToEdit?: Product | null;
 }
@@ -60,9 +60,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
             }
             
             setIsUploading(true);
-            const fileName = `${Date.now()}-${file.name}`;
-            // FIX: The file path should not contain any prefix like 'public/'.
-            // Supabase handles the pathing within the bucket.
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_').replace(/\s+/g, '-');
+            const fileName = `${Date.now()}-${sanitizedFileName}`;
             const filePath = fileName;
 
             const { error: uploadError } = await supabase.storage

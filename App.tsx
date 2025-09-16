@@ -1,11 +1,12 @@
-import React, { lazy, Suspense, useContext } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { ProductProvider, useProducts, ProductContext } from './context/ProductContext';
+import { ProductProvider, useProducts } from './context/ProductContext';
 import { CartProvider } from './context/CartContext';
-import { AdminSettingsProvider } from './context/AdminSettingsContext';
+import { AdminSettingsProvider, useAdminSettings } from './context/AdminSettingsContext';
 import { ToastProvider } from './context/ToastContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { supabase } from './utils/formatter';
+import PermissionError from './components/PermissionError';
 
 const UserLayout = lazy(() => import('./components/layouts/UserLayout'));
 const AdminLayout = lazy(() => import('./components/layouts/AdminLayout'));
@@ -44,80 +45,28 @@ const ConfigurationError = () => (
   </div>
 );
 
-const PermissionError = () => {
-    const sqlScript = `-- SALIN DAN JALANKAN SEMUA KODE DI BAWAH INI --
-
--- === BAGIAN 1: IZIN UNTUK MENGELOLA PRODUK & PENGATURAN ===
--- Izin ini diperlukan agar Panel Admin bisa menambah, mengubah, dan menghapus data.
-
--- Memberi izin untuk MENAMBAH (INSERT) produk baru
-CREATE POLICY "Allow anonymous inserts for products" ON public.products FOR INSERT WITH CHECK (true);
-
--- Memberi izin untuk MENGUBAH (UPDATE) produk yang ada
-CREATE POLICY "Allow anonymous updates for products" ON public.products FOR UPDATE USING (true) WITH CHECK (true);
-
--- Memberi izin untuk MENGHAPUS (DELETE) produk
-CREATE POLICY "Allow anonymous deletes for products" ON public.products FOR DELETE USING (true);
-
--- Memberi izin untuk MENAMBAH/MENGUBAH (UPSERT) pengaturan
-CREATE POLICY "Allow anonymous inserts for settings" ON public.settings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow anonymous updates for settings" ON public.settings FOR UPDATE USING (true) WITH CHECK (true);
-
-
--- === BAGIAN 2: IZIN UNTUK MENGELOLA GAMBAR PRODUK ===
--- Izin ini diperlukan agar Panel Admin bisa mengunggah dan menghapus gambar.
-
--- Memberi izin semua orang untuk MELIHAT gambar
-CREATE POLICY "Allow public read access on product images" ON storage.objects FOR SELECT USING ( bucket_id = 'product-images' );
-
--- Memberi izin aplikasi untuk MENGUNGGAH gambar
-CREATE POLICY "Allow anonymous uploads on product images" ON storage.objects FOR INSERT WITH CHECK ( bucket_id = 'product-images' );
-
--- Memberi izin aplikasi untuk MENGHAPUS gambar
-CREATE POLICY "Allow anonymous deletes on product images" ON storage.objects FOR DELETE USING ( bucket_id = 'product-images' );
-`;
-  return (
-    <div className="bg-orange-50 min-h-screen flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-lg shadow-2xl max-w-4xl text-left border-t-4 border-orange-500">
-        <h1 className="text-3xl font-bold text-orange-700 mb-4">Aksi Diperlukan: Atur Izin Database</h1>
-        <p className="text-gray-700 mb-4">
-          Aplikasi Anda berhasil terhubung ke database, tetapi tidak memiliki izin untuk menambah, mengubah, atau menghapus data. Ini adalah fitur keamanan Supabase yang disebut "Row Level Security".
-        </p>
-        <p className="text-gray-600 mb-6">
-          Untuk memperbaikinya, Anda hanya perlu menjalankan skrip SQL di bawah ini <strong>satu kali</strong> di dashboard Supabase Anda.
-        </p>
-        <div className="space-y-4">
-          <p><strong>Langkah 1:</strong> Buka proyek Anda di Supabase, lalu navigasi ke menu <strong>SQL Editor</strong>.</p>
-          <p><strong>Langkah 2:</strong> Klik <strong>+ New query</strong>, lalu salin dan tempel seluruh kode di bawah ini.</p>
-          <p><strong>Langkah 3:</strong> Klik tombol <strong>RUN</strong>.</p>
-        </div>
-        <div className="mt-6">
-          <textarea
-            readOnly
-            value={sqlScript}
-            rows={15}
-            className="w-full p-3 font-mono text-sm bg-gray-900 text-green-400 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
-          />
-          <button
-            onClick={() => navigator.clipboard.writeText(sqlScript)}
-            className="mt-2 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors font-semibold"
-          >
-            Salin Kode
-          </button>
-        </div>
-        <p className="mt-6 text-sm text-gray-500">Setelah menjalankan skrip, muat ulang (refresh) halaman ini.</p>
-      </div>
-    </div>
-  );
-};
-
-
 const AppContent = () => {
   const { error: productError } = useProducts();
+  const { error: settingsError } = useAdminSettings();
+  const { error: themeError } = useTheme();
+
+  const anyError = productError || settingsError || themeError;
   
-  // Periksa kode error spesifik dari Supabase (Postgres) untuk 'permission denied'
-  if (productError && productError.code === '42501') {
-    return <PermissionError />;
+  if (anyError) {
+    const errorCode = anyError.code || '';
+    const errorMessage = anyError.message || '';
+    
+    // Periksa kode error spesifik dari Supabase (Postgres) atau pesan error yang relevan:
+    // 42501: permission denied (izin RLS salah)
+    // 42P01: undefined_table (tabel tidak ada)
+    // 42703: undefined_column (struktur tabel salah/usang)
+    const isSetupError = 
+      ['42501', '42P01', '42703'].includes(errorCode) || 
+      errorMessage.includes('does not exist');
+
+    if (isSetupError) {
+      return <PermissionError />;
+    }
   }
 
   return (

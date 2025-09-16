@@ -6,7 +6,7 @@ interface ProductContextType {
   products: Product[];
   loading: boolean;
   error: any | null; // Expose error state
-  addProduct: (product: Omit<Product, 'id'>) => Promise<{ success: boolean; error?: any }>;
+  addProduct: (product: Omit<Product, 'id' | 'created_at'>) => Promise<{ success: boolean; data?: Product; error?: any }>;
   updateProduct: (product: Product) => Promise<{ success: boolean; error?: any }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: any }>;
   getProductById: (productId: string) => Product | undefined;
@@ -31,10 +31,10 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       const { data, error: fetchError } = await supabase
         .from('products')
         .select('*')
-        .order('id', { ascending: false });
+        .order('created_at', { ascending: false }); // Urutkan berdasarkan yang terbaru
       
       if (fetchError) {
-        console.error('Error fetching products:', fetchError);
+        console.error('Error fetching products:', fetchError.message || fetchError);
         setError(fetchError);
       } else {
         setProducts(data || []);
@@ -45,33 +45,41 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     fetchProducts();
   }, []);
 
-  const addProduct = async (productData: Omit<Product, 'id'>) => {
+  const addProduct = async (productData: Omit<Product, 'id' | 'created_at'>) => {
     setError(null);
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot add product.");
-      console.error(err);
+      console.error(err.message);
       return { success: false, error: err };
     }
-    const productWithId = { ...productData, id: Date.now().toString() };
     
-    setProducts(prev => [productWithId, ...prev]);
-
-    const { error: insertError } = await supabase.from('products').insert(productWithId);
+    // Kirim data ke Supabase, biarkan DB membuat ID (UUID) & created_at
+    const { data: newProduct, error: insertError } = await supabase
+      .from('products')
+      .insert(productData)
+      .select()
+      .single();
 
     if (insertError) {
-      console.error('Error adding product:', insertError);
+      console.error('Error adding product:', insertError.message || insertError);
       setError(insertError);
-      setProducts(prev => prev.filter(p => p.id !== productWithId.id));
       return { success: false, error: insertError };
     }
-    return { success: true };
+
+    if (newProduct) {
+      // Perbarui state dengan data valid dari database
+      setProducts(prev => [newProduct, ...prev]);
+      return { success: true, data: newProduct };
+    }
+    
+    return { success: false, error: new Error('Failed to get product back after creation') };
   };
 
   const updateProduct = async (updatedProduct: Product) => {
     setError(null);
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot update product.");
-      console.error(err);
+      console.error(err.message);
       return { success: false, error: err };
     }
     const originalProducts = products;
@@ -83,7 +91,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       .eq('id', updatedProduct.id);
 
     if (updateError) {
-      console.error('Error updating product:', updateError);
+      console.error('Error updating product:', updateError.message || updateError);
       setError(updateError);
       setProducts(originalProducts); // Rollback
       return { success: false, error: updateError };
@@ -95,7 +103,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     setError(null);
     if (!supabase) {
        const err = new Error("Supabase client not initialized. Cannot delete product.");
-       console.error(err);
+       console.error(err.message);
        return { success: false, error: err };
     }
 
@@ -110,26 +118,27 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       .eq('id', productId);
 
     if (dbError) {
-      console.error('Error deleting product from database:', dbError);
+      console.error('Error deleting product from database:', dbError.message || dbError);
       setError(dbError);
       setProducts(originalProducts); // Rollback
       return { success: false, error: dbError };
     }
 
-    // Continue to delete storage image even if DB deletion was successful
-    if (productToDelete && productToDelete.imageUrl) {
+    // Hanya coba hapus gambar dari storage jika URLnya adalah URL Supabase
+    if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.includes('supabase.co')) {
       try {
         const url = new URL(productToDelete.imageUrl);
-        const filePath = url.pathname.split('/product-images/')[1];
-        if (filePath) {
-          const { error: storageError } = await supabase.storage.from('product-images').remove([filePath]);
-          if (storageError) {
-            console.error('Error deleting image from storage:', storageError);
-            // Non-critical error, don't return failure for this
-          }
+        const pathParts = url.pathname.split('/product-images/');
+        if (pathParts.length > 1 && pathParts[1]) {
+            const filePath = decodeURIComponent(pathParts[1]);
+            const { error: storageError } = await supabase.storage.from('product-images').remove([filePath]);
+            if (storageError) {
+                console.error('Error deleting image from storage:', storageError.message || storageError);
+                // Non-critical error, don't return failure for this
+            }
         }
       } catch (e) {
-        console.error("Could not parse image URL to delete from storage:", e);
+        console.error("Could not parse Supabase image URL to delete from storage:", e);
       }
     }
     return { success: true };

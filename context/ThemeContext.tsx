@@ -21,6 +21,7 @@ interface ThemeContextType extends ThemeSettings {
   updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<{ success: boolean; error?: any; }>;
   resetBackgroundImage: () => Promise<{ success: boolean; error?: any; }>;
   loading: boolean;
+  error: any | null;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -42,16 +43,18 @@ const defaultSettings: ThemeSettings = {
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchTheme = async () => {
       setLoading(true);
+      setError(null);
       if (!supabase) {
         console.warn("Supabase client not initialized. Using default theme.");
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('settings')
         .select('value')
         .eq('key', 'themeSettings')
@@ -59,8 +62,9 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       if (data && data.value) {
         setSettings({ ...defaultSettings, ...(data.value as Partial<ThemeSettings>) });
-      } else if (error && error.code !== 'PGRST116') {
-        console.error("Error fetching theme settings:", error.message || error);
+      } else if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error("Error fetching theme settings:", fetchError.message || fetchError);
+        setError(fetchError);
       }
       setLoading(false);
     };
@@ -69,23 +73,26 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
   
   const updateThemeSettings = async (newSettings: Partial<ThemeSettings>) => {
+    setError(null);
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot save theme.");
       console.error(err);
+      setError(err);
       return { success: false, error: err };
     }
     const oldSettings = settings;
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings); // Optimistic update
 
-    const { error } = await supabase
+    const { error: upsertError } = await supabase
       .from('settings')
       .upsert({ key: 'themeSettings', value: updatedSettings });
     
-    if (error) {
-      console.error("Error saving theme settings:", error.message || error);
+    if (upsertError) {
+      console.error("Error saving theme settings:", upsertError.message || upsertError);
+      setError(upsertError);
       setSettings(oldSettings); // Rollback
-      return { success: false, error };
+      return { success: false, error: upsertError };
     }
     return { success: true };
   };
@@ -95,9 +102,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }
 
   return (
-    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading }}>
+    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading, error }}>
       {children}
-    {/* FIX: Corrected closing tag from Theme.Provider to ThemeContext.Provider */}
     </ThemeContext.Provider>
   );
 };

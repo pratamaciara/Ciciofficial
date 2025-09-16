@@ -110,7 +110,7 @@ const AdminView: React.FC = () => {
       addToast('Background direset ke default.');
   };
 
-  const handleSaveProduct = async (productData: Product | Omit<Product, 'id'>) => {
+  const handleSaveProduct = async (productData: Product | Omit<Product, 'id' | 'created_at'>) => {
     setIsSaving(true);
     let result;
     if ('id' in productData && productToEdit) {
@@ -119,7 +119,7 @@ const AdminView: React.FC = () => {
         addToast('Produk berhasil diperbarui!');
       }
     } else {
-      result = await addProduct(productData as Omit<Product, 'id'>);
+      result = await addProduct(productData as Omit<Product, 'id' | 'created_at'>);
       if (result.success) {
         addToast('Produk baru berhasil ditambahkan!');
       }

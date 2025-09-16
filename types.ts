@@ -7,6 +7,7 @@ export interface Variant {
 
 export interface Product {
   id: string;
+  created_at?: string; // Ditambahkan untuk pengurutan
   name: string;
   description?: string;
   price: number;
