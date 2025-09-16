@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useProducts } from '../context/ProductContext';
@@ -38,10 +37,9 @@ const AdminView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const settingsFileInputRef = useRef<HTMLInputElement>(null);
 
-
   const handleSaveSettings = () => {
     setWhatsAppNumber(localWhatsAppNumber);
-    addToast('Pengaturan dasar berhasil disimpan!');
+    addToast('Pengaturan dasar berhasil disimpan (Lokal)!');
   };
   
   const handleLocalThemeChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -65,7 +63,7 @@ const AdminView: React.FC = () => {
       if (localBgImage) {
           theme.updateThemeSettings({ backgroundImage: localBgImage });
       }
-      addToast('Pengaturan tampilan disimpan!');
+      addToast('Pengaturan tampilan disimpan (Lokal)!');
   };
   
   const handlePopupImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -85,7 +83,7 @@ const AdminView: React.FC = () => {
         return;
     }
     theme.updateThemeSettings({ popupSettings: localPopupSettings });
-    addToast('Pengaturan popup berhasil disimpan!');
+    addToast('Pengaturan popup disimpan (Lokal)!');
   };
 
   const handleResetBg = () => {
@@ -221,6 +219,40 @@ const AdminView: React.FC = () => {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Panel Admin</h1>
+
+       <div id="publication-workflow" className="bg-amber-50 border-l-4 border-amber-500 text-amber-900 p-6 rounded-r-lg shadow-lg">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <svg className="h-8 w-8 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7v-2.333c.002-1.12.633-2.166 1.667-2.666s2.167-.333 3.167.333L15 12.5v2.833c0 .588-.21 1.133-.583 1.583s-.867.75-1.417.833c-.175.027-.35.053-.526.076M14.66 12.5L12 10.833 9.34 12.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="ml-4">
+            <h2 className="font-bold text-xl">PERHATIAN: Cara Mempublikasikan Perubahan Anda</h2>
+            <p className="mt-2 text-base">
+              Perubahan yang Anda simpan di halaman ini (produk, gambar, pengaturan) <strong>TIDAK AKAN LANGSUNG MUNCUL</strong> untuk pelanggan Anda. Data tersebut hanya tersimpan di browser Anda.
+            </p>
+            <p className="mt-2 font-semibold text-base">
+              Agar semua orang bisa melihat perubahan terbaru, ikuti 3 langkah wajib ini SETIAP KALI Anda selesai mengedit:
+            </p>
+            <ol className="list-decimal list-inside mt-3 space-y-3 font-medium text-base">
+              <li>
+                <strong>Ekspor Data Terbaru:</strong><br/>
+                Gulir ke bawah ke bagian "Manajemen Data" lalu klik tombol <strong>"Ekspor Produk"</strong> dan <strong>"Ekspor Pengaturan"</strong> untuk mengunduh 2 file `.json`.
+              </li>
+              <li>
+                <strong>Kirim File ke Developer:</strong><br/>
+                Kirim kedua file `.json` yang baru saja Anda unduh ke developer yang mengelola website ini.
+              </li>
+              <li>
+                <strong>Minta Deploy Ulang:</strong><br/>
+                Minta developer untuk mempublikasikan ulang (deploy ulang) website Anda dengan data yang baru. Setelah selesai, perubahan Anda akan live untuk semua orang.
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
 
       {/* Settings */}
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -367,25 +399,15 @@ const AdminView: React.FC = () => {
                 className="inline-flex items-center px-4 py-2 bg-secondary text-white rounded-md hover:bg-primary font-semibold shadow-sm transition-colors"
             >
                 <SaveIcon />
-                Simpan Produk
+                Simpan Perubahan Produk
             </button>
         </div>
       </div>
 
       {/* Data Management */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Manajemen Data</h2>
-        
-        <div className="p-4 bg-amber-50 border-l-4 border-amber-400 text-amber-800 rounded-r-lg mb-4">
-            <h3 className="font-bold">Penting: Cara Menyimpan Perubahan Secara Permanen</h3>
-            <p className="text-sm mt-1">Perubahan yang Anda buat di sini (produk, nomor WA, dll.) hanya tersimpan di browser Anda. Agar semua pengunjung bisa melihat perubahan tersebut, Anda harus:</p>
-            <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
-                <li>Setelah selesai mengedit, klik tombol <strong>Ekspor</strong> di bawah untuk mengunduh data.</li>
-                <li>Berikan file <strong>.json</strong> yang terunduh kepada developer Anda.</li>
-                <li>Developer akan memperbarui kode sumber aplikasi dan melakukan deploy ulang.</li>
-            </ol>
-        </div>
-        
+      <div id="data-management-section" className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4">Manajemen Data (Langkah 1 Ekspor)</h2>
+        <p className="text-sm text-gray-600 mb-4">Gunakan tombol ini untuk mengunduh data terbaru Anda sebelum memberikannya kepada developer.</p>
         <div className="flex flex-wrap gap-4">
             <button onClick={handleExportProducts} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 Ekspor Produk (.json)
