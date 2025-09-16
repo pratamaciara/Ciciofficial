@@ -21,7 +21,7 @@ const initialProducts: Product[] = [
         price: 10000,
         stock: 15,
         category: 'Makanan Ringan',
-        imageUrl: 'https://storage.googleapis.com/static.aistudio.dev/1722444588825-0.png',
+        imageUrl: 'https://i.postimg.cc/fLtmmqGB/Whats-App-Image-2025-09-15-at-14-35-13.jpg',
         variants: []
     },
     {
@@ -31,7 +31,7 @@ const initialProducts: Product[] = [
         price: 10000,
         stock: 15,
         category: 'Minuman',
-        imageUrl: 'https://storage.googleapis.com/static.aistudio.dev/1722444588998-1.png',
+        imageUrl: 'https://i.postimg.cc/HLLQskBG/Whats-App-Image-2025-09-15-at-09-43-03.jpg',
         variants: []
     }
 ];
