@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Product, Variant } from '../types';
 import { GoogleGenAI } from "@google/genai";
@@ -62,7 +61,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
             
             setIsUploading(true);
             const fileName = `${Date.now()}-${file.name}`;
-            const filePath = `public/${fileName}`;
+            // FIX: The file path should not contain any prefix like 'public/'.
+            // Supabase handles the pathing within the bucket.
+            const filePath = fileName;
 
             const { error: uploadError } = await supabase.storage
                 .from('product-images')
