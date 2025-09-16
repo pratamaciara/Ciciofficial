@@ -39,6 +39,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
             : [{ id: Date.now().toString(), name: '', priceModifier: 0 }]
     );
     
+    const [imageUrlError, setImageUrlError] = useState('');
+    const [whatsappImageUrlError, setWhatsappImageUrlError] = useState('');
+
     useEffect(() => {
         let finalPrice = priceInput;
         if (discountType === 'percentage') {
@@ -48,6 +51,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
         }
         setCalculatedPrice(Math.max(0, Math.round(finalPrice)));
     }, [priceInput, discountType, discountValue]);
+
+    useEffect(() => {
+        if (imageUrl.startsWith('data:image')) {
+            setImageUrlError('Ini hanya preview lokal. Gunakan URL publik agar gambar dapat dilihat semua orang.');
+        } else {
+            setImageUrlError('');
+        }
+    }, [imageUrl]);
+
+    useEffect(() => {
+        if (whatsappImageUrl.startsWith('data:image')) {
+            setWhatsappImageUrlError('Ini hanya preview lokal. Gunakan URL publik atau kosongkan.');
+        } else {
+            setWhatsappImageUrlError('');
+        }
+    }, [whatsappImageUrl]);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setImageState: React.Dispatch<React.SetStateAction<string>>) => {
         const file = e.target.files?.[0];
@@ -117,19 +136,12 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!imageUrl) {
-            alert('URL Gambar Utama wajib diisi.');
-            return;
+        
+        if (imageUrlError || whatsappImageUrlError || !name || !imageUrl) {
+             console.error("Attempted to save with invalid data.");
+             return;
         }
-        if (imageUrl.startsWith('data:image')) {
-            alert('URL Gambar Utama masih berupa preview lokal. Harap ganti dengan URL publik agar bisa dilihat oleh pengunjung.');
-            return;
-        }
-        if (whatsappImageUrl && whatsappImageUrl.startsWith('data:image')) {
-            alert('URL Gambar WA masih berupa preview lokal. Harap ganti dengan URL publik atau kosongkan.');
-            return;
-        }
-
+        
         const hasDiscount = discountType !== 'none' && discountValue > 0 && priceInput > calculatedPrice;
         
         const newProduct: Product = {
@@ -144,6 +156,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
         };
         onSave(newProduct);
     };
+    
+    const isSaveDisabled = !!imageUrlError || !!whatsappImageUrlError || !name.trim() || !imageUrl;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -218,9 +232,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
                         className="hidden"
                     />
                 </div>
-                {imageUrl.startsWith('data:image') && (
-                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md text-sm">
-                        <strong>Perhatian:</strong> Gambar ini hanya preview lokal. Agar muncul online, upload gambar ke <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" className="font-bold underline">postimages.org</a> atau sejenisnya, lalu salin & tempel 'Direct Link' ke kolom URL di atas.
+                {imageUrlError && (
+                    <div className="mt-2 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
+                        <strong>Error:</strong> {imageUrlError} Upload gambar ke <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" className="font-bold underline">postimages.org</a>, lalu salin & tempel 'Direct Link' ke kolom URL di atas.
                     </div>
                 )}
                 {imageUrl && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
@@ -247,9 +261,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
                         className="hidden"
                     />
                 </div>
-                {whatsappImageUrl.startsWith('data:image') && (
-                     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md text-sm">
-                        <strong>Perhatian:</strong> Ini adalah preview lokal. Ganti dengan URL publik agar gambar muncul di pesan WhatsApp.
+                {whatsappImageUrlError && (
+                     <div className="mt-2 p-3 bg-red-50 border border-red-200 text-red-800 rounded-md text-sm">
+                        <strong>Error:</strong> {whatsappImageUrlError}
                     </div>
                 )}
                 {whatsappImageUrl && <img src={whatsappImageUrl} alt="Preview WA" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
@@ -301,7 +315,13 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
 
             <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Batal</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-secondary">Simpan Produk</button>
+                <button 
+                    type="submit" 
+                    disabled={isSaveDisabled}
+                    className={`px-4 py-2 text-white rounded-md transition-colors ${isSaveDisabled ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
+                >
+                    Simpan Produk
+                </button>
             </div>
         </form>
     );
