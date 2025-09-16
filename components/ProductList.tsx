@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from './ProductCard';
@@ -6,7 +7,7 @@ import { Product } from '../types';
 type FilterType = 'all' | 'newest' | 'bestselling' | 'sale';
 
 const ProductList: React.FC = () => {
-  const { products } = useProducts();
+  const { products, loading } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
@@ -58,6 +59,13 @@ const ProductList: React.FC = () => {
     );
   };
 
+  if (loading) {
+    return (
+        <div className="flex justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+    );
+  }
 
   return (
     <div>

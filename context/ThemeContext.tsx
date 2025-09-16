@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { supabase } from '../utils/formatter';
 
 interface PopupSettings {
   enabled: boolean;
@@ -17,69 +18,79 @@ interface ThemeSettings {
 }
 
 interface ThemeContextType extends ThemeSettings {
-  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => void;
-  resetBackgroundImage: () => void;
+  updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<void>;
+  resetBackgroundImage: () => Promise<void>;
+  loading: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const getInitialThemeSettings = (): ThemeSettings => {
-    const defaultSettings = {
-        storeName: 'CICI NYEMIL',
-        storeDescription: 'Yuk jajan di cici nyemil di jamin ketagihan',
-        instagramUrl: '',
-        facebookUrl: '',
-        tiktokUrl: '',
-        backgroundImage: '',
-        popupSettings: {
-            enabled: false,
-            imageUrl: '',
-            linkProductId: null,
-        }
-    };
-
-    try {
-      const item = window.localStorage.getItem('themeSettings');
-      if (item) {
-        const storedSettings = JSON.parse(item);
-        // Merge stored settings with defaults to ensure new properties are present
-        return {
-          ...defaultSettings,
-          ...storedSettings,
-          popupSettings: {
-            ...defaultSettings.popupSettings,
-            ...(storedSettings.popupSettings || {})
-          }
-        };
-      }
-      return defaultSettings;
-    } catch (error) {
-      console.error(error);
-      return defaultSettings;
+const defaultSettings: ThemeSettings = {
+    storeName: 'CICI NYEMIL',
+    storeDescription: 'Yuk jajan di cici nyemil di jamin ketagihan',
+    instagramUrl: '',
+    facebookUrl: '',
+    tiktokUrl: '',
+    backgroundImage: '',
+    popupSettings: {
+        enabled: false,
+        imageUrl: '',
+        linkProductId: null,
     }
-}
+};
 
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<ThemeSettings>(getInitialThemeSettings);
+  const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem('themeSettings', JSON.stringify(settings));
-    } catch (error) {
-      console.error(error);
-    }
-  }, [settings]);
+    const fetchTheme = async () => {
+      setLoading(true);
+      if (!supabase) {
+        console.warn("Supabase client not initialized. Using default theme.");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'themeSettings')
+        .single();
+      
+      if (data && data.value) {
+        setSettings({ ...defaultSettings, ...(data.value as Partial<ThemeSettings>) });
+      } else if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching theme settings:", error.message || error);
+      }
+      setLoading(false);
+    };
 
-  const updateThemeSettings = (newSettings: Partial<ThemeSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    fetchTheme();
+  }, []);
+  
+  const updateThemeSettings = async (newSettings: Partial<ThemeSettings>) => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Cannot save theme.");
+      return;
+    }
+    const updatedSettings = { ...settings, ...newSettings };
+    setSettings(updatedSettings); // Optimistic update
+
+    const { error } = await supabase
+      .from('settings')
+      .upsert({ key: 'themeSettings', value: updatedSettings });
+    
+    if (error) {
+      console.error("Error saving theme settings:", error.message || error);
+    }
   };
 
-  const resetBackgroundImage = () => {
-    setSettings(prev => ({ ...prev, backgroundImage: '' }));
+  const resetBackgroundImage = async () => {
+    await updateThemeSettings({ backgroundImage: '' });
   }
 
   return (
-    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage }}>
+    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading }}>
       {children}
     </ThemeContext.Provider>
   );

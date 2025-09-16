@@ -1,45 +1,63 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { supabase } from '../utils/formatter';
 
 interface AdminSettingsContextType {
   whatsAppNumber: string;
-  setWhatsAppNumber: (number: string) => void;
+  setWhatsAppNumber: (number: string) => Promise<void>;
+  loading: boolean;
 }
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);
 
-// Default WhatsApp number to ensure it's never empty for new users.
-// This value should be updated in the code when the store owner finalizes their number.
-const defaultWhatsAppNumber = '6281234567890'; // Ganti dengan nomor WA default Anda
+const defaultWhatsAppNumber = '6281234567890'; // Fallback number
 
 export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [whatsAppNumber, setWhatsAppNumberState] = useState<string>(() => {
-    try {
-      const item = window.localStorage.getItem('whatsAppNumber');
-      // If there's a stored value, use it. Otherwise, use the hardcoded default.
-      return item ? JSON.parse(item) : defaultWhatsAppNumber;
-    // Fix: Added curly braces to the catch block to properly scope its statements.
-    } catch (error) {
-      console.error(error);
-      return defaultWhatsAppNumber;
-    }
-  });
+  const [whatsAppNumber, setWhatsAppNumberState] = useState<string>(defaultWhatsAppNumber);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      // Save any changes to localStorage for the admin's convenience.
-      window.localStorage.setItem('whatsAppNumber', JSON.stringify(whatsAppNumber));
-    } catch (error) {
-      console.error(error);
-    }
-  }, [whatsAppNumber]);
+    const fetchSettings = async () => {
+      setLoading(true);
+      if (!supabase) {
+        console.warn("Supabase client not initialized. Using default settings.");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'whatsAppNumber')
+        .single();
+      
+      if (data && data.value) {
+        setWhatsAppNumberState(data.value);
+      } else if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+        console.error("Error fetching WhatsApp number:", error.message || error);
+      }
+      setLoading(false);
+    };
 
-  const setWhatsAppNumber = (number: string) => {
-    setWhatsAppNumberState(number);
+    fetchSettings();
+  }, []);
+
+  const setWhatsAppNumber = async (number: string) => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Cannot save settings.");
+      return;
+    }
+    setWhatsAppNumberState(number); // Optimistic update
+    const { error } = await supabase
+      .from('settings')
+      .upsert({ key: 'whatsAppNumber', value: number });
+
+    if (error) {
+      console.error("Error saving WhatsApp number:", error.message || error);
+      // Optional: handle rollback on error
+    }
   };
 
   return (
-    <AdminSettingsContext.Provider value={{ whatsAppNumber, setWhatsAppNumber }}>
+    <AdminSettingsContext.Provider value={{ whatsAppNumber, setWhatsAppNumber, loading }}>
       {children}
     </AdminSettingsContext.Provider>
   );

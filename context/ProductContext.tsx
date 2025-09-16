@@ -1,146 +1,109 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Product } from '../types';
+import { supabase } from '../utils/formatter';
 
 interface ProductContextType {
   products: Product[];
-  addProduct: (product: Product) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
-  importProducts: (newProducts: Product[]) => void;
+  loading: boolean;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
-  saveProducts: () => void;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
-const initialProducts: Product[] = [
-    {
-        id: '1722444000001',
-        name: 'basreng cili oil',
-        description: 'Basreng (bakso goreng) renyah dengan bumbu chili oil pedas yang menggugah selera. Cemilan sempurna untuk menemani waktu santai Anda.',
-        price: 10000,
-        stock: 15,
-        category: 'Makanan Ringan',
-        imageUrl: 'https://i.postimg.cc/fLtmmqGB/Whats-App-Image-2025-09-15-at-14-35-13.jpg',
-        variants: []
-    },
-    {
-        id: '1722444000002',
-        name: 'ALPUKAT KOCOK',
-        description: 'Minuman alpukat kocok segar dengan topping keju melimpah. Manis, creamy, dan dijamin bikin ketagihan.',
-        price: 10000,
-        stock: 15,
-        category: 'Minuman',
-        imageUrl: 'https://i.postimg.cc/HLLQskBG/Whats-App-Image-2025-09-15-at-09-43-03.jpg',
-        variants: []
-    }
-];
-
-const loadProductsFromStorage = (): Product[] => {
-  try {
-    const serializedProducts = window.localStorage.getItem('products');
-    if (serializedProducts === null || serializedProducts === '[]') { // Handle empty array explicitly
-      window.localStorage.setItem('products', JSON.stringify(initialProducts));
-      return initialProducts;
-    }
-    const storedProducts = JSON.parse(serializedProducts);
-    if (Array.isArray(storedProducts) && storedProducts.length > 0) {
-      return storedProducts;
-    }
-    // If stored is empty array, it will fall through and return initialProducts
-    window.localStorage.setItem('products', JSON.stringify(initialProducts));
-    return initialProducts;
-  } catch (error) {
-    console.error('Failed to parse product data from localStorage. Falling back.', error);
-    window.localStorage.setItem('products', JSON.stringify(initialProducts));
-    return initialProducts;
-  }
-};
-
-
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(loadProductsFromStorage);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'products' && event.newValue) {
-        try {
-          const newProducts = JSON.parse(event.newValue);
-          if (Array.isArray(newProducts)) {
-            setProducts(newProducts);
-          }
-        } catch (error) {
-          console.error("Failed to parse products from storage event:", error);
-        }
+    const fetchProducts = async () => {
+      setLoading(true);
+      if (!supabase) {
+        console.warn("Supabase client not initialized. Cannot fetch products.");
+        setLoading(false);
+        return;
       }
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('id', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching products:', error.message || error);
+      } else {
+        setProducts(data || []);
+      }
+      setLoading(false);
     };
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+
+    fetchProducts();
   }, []);
 
-  const addProduct = (product: Product) => {
-    setProducts((prev) => {
-      const newProducts = [product, ...prev];
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Cannot add product.");
+      return;
+    }
+    const productWithId = { ...productData, id: Date.now().toString() };
+    
+    // Optimistic update
+    setProducts(prev => [productWithId, ...prev]);
+
+    const { error } = await supabase.from('products').insert(productWithId);
+
+    if (error) {
+      console.error('Error adding product:', error.message || error);
+      // Rollback on error
+      setProducts(prev => prev.filter(p => p.id !== productWithId.id));
+    }
   };
 
-  const updateProduct = (updatedProduct: Product) => {
-    setProducts(prev => {
-        const newProducts = prev.map(p => p.id === updatedProduct.id ? updatedProduct : p);
-        try {
-          window.localStorage.setItem('products', JSON.stringify(newProducts));
-        } catch (error) {
-          console.error("Failed to save products to localStorage:", error);
-        }
-        return newProducts;
-    });
+  const updateProduct = async (updatedProduct: Product) => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Cannot update product.");
+      return;
+    }
+    // Optimistic update
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+
+    const { error } = await supabase
+      .from('products')
+      .update(updatedProduct)
+      .eq('id', updatedProduct.id);
+
+    if (error) {
+      console.error('Error updating product:', error.message || error);
+      // Optional: Rollback on error by re-fetching data
+    }
   };
 
-  const deleteProduct = (productId: string) => {
-    setProducts((prev) => {
-      const newProducts = prev.filter((p) => p.id !== productId);
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to save products to localStorage:", error);
-      }
-      return newProducts;
-    });
+  const deleteProduct = async (productId: string) => {
+    if (!supabase) {
+      console.error("Supabase client not initialized. Cannot delete product.");
+      return;
+    }
+     // Optimistic update
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (error) {
+      console.error('Error deleting product:', error.message || error);
+       // Optional: Rollback on error by re-fetching data
+    }
   };
 
-  const importProducts = (newProducts: Product[]) => {
-    setProducts(() => {
-      try {
-        window.localStorage.setItem('products', JSON.stringify(newProducts));
-      } catch (error) {
-        console.error("Failed to import/save products to localStorage:", error);
-      }
-      return newProducts;
-    });
-  };
-  
   const getProductById = (productId: string): Product | undefined => {
     return products.find(p => p.id === productId);
   };
 
-  const saveProducts = () => {
-    try {
-      window.localStorage.setItem('products', JSON.stringify(products));
-    } catch (error) {
-      console.error("Failed to save products to localStorage:", error);
-    }
-  };
-
   return (
-    <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, importProducts, getProductById, saveProducts }}>
+    <ProductContext.Provider value={{ products, loading, addProduct, updateProduct, deleteProduct, getProductById }}>
       {children}
     </ProductContext.Provider>
   );
