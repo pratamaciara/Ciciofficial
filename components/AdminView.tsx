@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { useAdminSettings } from '../context/AdminSettingsContext';
 import { useProducts } from '../context/ProductContext';
@@ -35,6 +36,8 @@ const AdminView: React.FC = () => {
   const [localPopupSettings, setLocalPopupSettings] = useState(theme.popupSettings);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsFileInputRef = useRef<HTMLInputElement>(null);
+
 
   const handleSaveSettings = () => {
     setWhatsAppNumber(localWhatsAppNumber);
@@ -91,19 +94,39 @@ const AdminView: React.FC = () => {
       addToast('Background direset ke default.');
   };
 
-  const handleExport = () => {
-    const dataStr = JSON.stringify(products, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'products.json';
+  const handleExport = (data: any, defaultFileName: string) => {
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.setAttribute('download', defaultFileName);
     linkElement.click();
+  };
+  
+  const handleExportProducts = () => {
+    handleExport(products, 'products.json');
     addToast('Data produk diekspor!');
+  };
+
+  const handleExportSettings = () => {
+    const settingsData = {
+      whatsAppNumber: localWhatsAppNumber,
+      theme: {
+        ...localTheme,
+        backgroundImage: theme.backgroundImage, // Export the saved one
+        popupSettings: theme.popupSettings
+      }
+    };
+    handleExport(settingsData, 'settings.json');
+    addToast('Data pengaturan diekspor!');
   };
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
+  };
+  
+  const handleImportSettingsClick = () => {
+    settingsFileInputRef.current?.click();
   };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +144,39 @@ const AdminView: React.FC = () => {
             } else {
                throw new Error('Invalid file format');
             }
+          }
+        } catch (error) {
+          addToast('Gagal mengimpor: File tidak valid.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSettingsFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result;
+          if (typeof text === 'string') {
+            const settings = JSON.parse(text);
+            if(settings.whatsAppNumber) {
+                setLocalWhatsAppNumber(settings.whatsAppNumber);
+                setWhatsAppNumber(settings.whatsAppNumber);
+            }
+            if(settings.theme) {
+                setLocalTheme({
+                    storeName: settings.theme.storeName || '',
+                    storeDescription: settings.theme.storeDescription || '',
+                    instagramUrl: settings.theme.instagramUrl || '',
+                    facebookUrl: settings.theme.facebookUrl || '',
+                    tiktokUrl: settings.theme.tiktokUrl || '',
+                });
+                theme.updateThemeSettings(settings.theme);
+            }
+            addToast('Pengaturan berhasil diimpor!');
           }
         } catch (error) {
           addToast('Gagal mengimpor: File tidak valid.', 'error');
@@ -319,17 +375,41 @@ const AdminView: React.FC = () => {
       {/* Data Management */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Manajemen Data</h2>
-        <div className="flex space-x-4">
-            <button onClick={handleExport} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+        
+        <div className="p-4 bg-amber-50 border-l-4 border-amber-400 text-amber-800 rounded-r-lg mb-4">
+            <h3 className="font-bold">Penting: Cara Menyimpan Perubahan Secara Permanen</h3>
+            <p className="text-sm mt-1">Perubahan yang Anda buat di sini (produk, nomor WA, dll.) hanya tersimpan di browser Anda. Agar semua pengunjung bisa melihat perubahan tersebut, Anda harus:</p>
+            <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
+                <li>Setelah selesai mengedit, klik tombol <strong>Ekspor</strong> di bawah untuk mengunduh data.</li>
+                <li>Berikan file <strong>.json</strong> yang terunduh kepada developer Anda.</li>
+                <li>Developer akan memperbarui kode sumber aplikasi dan melakukan deploy ulang.</li>
+            </ol>
+        </div>
+        
+        <div className="flex flex-wrap gap-4">
+            <button onClick={handleExportProducts} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 Ekspor Produk (.json)
             </button>
             <button onClick={handleImportClick} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                 Impor Produk (.json)
             </button>
+            <button onClick={handleExportSettings} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Ekspor Pengaturan (.json)
+            </button>
+            <button onClick={handleImportSettingsClick} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                Impor Pengaturan (.json)
+            </button>
             <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
+                accept=".json"
+                className="hidden"
+            />
+             <input
+                type="file"
+                ref={settingsFileInputRef}
+                onChange={handleSettingsFileChange}
                 accept=".json"
                 className="hidden"
             />
