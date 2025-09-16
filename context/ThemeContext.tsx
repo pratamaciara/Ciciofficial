@@ -21,7 +21,8 @@ interface ThemeContextType extends ThemeSettings {
   updateThemeSettings: (newSettings: Partial<ThemeSettings>) => Promise<{ success: boolean; error?: any; }>;
   resetBackgroundImage: () => Promise<{ success: boolean; error?: any; }>;
   loading: boolean;
-  error: any | null;
+  loadError: any | null; // Error saat memuat data awal
+  actionError: any | null; // Error saat melakukan aksi (menyimpan)
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -43,12 +44,13 @@ const defaultSettings: ThemeSettings = {
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any | null>(null);
+  const [loadError, setLoadError] = useState<any | null>(null);
+  const [actionError, setActionError] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchTheme = async () => {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       if (!supabase) {
         console.warn("Supabase client not initialized. Using default theme.");
         setLoading(false);
@@ -64,7 +66,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setSettings({ ...defaultSettings, ...(data.value as Partial<ThemeSettings>) });
       } else if (fetchError && fetchError.code !== 'PGRST116') {
         console.error("Error fetching theme settings:", fetchError.message || fetchError);
-        setError(fetchError);
+        setLoadError(fetchError);
       }
       setLoading(false);
     };
@@ -73,11 +75,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
   
   const updateThemeSettings = async (newSettings: Partial<ThemeSettings>) => {
-    setError(null);
+    setActionError(null); // Hapus error aksi sebelumnya
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot save theme.");
       console.error(err);
-      setError(err);
+      setActionError(err);
       return { success: false, error: err };
     }
     const oldSettings = settings;
@@ -90,7 +92,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     
     if (upsertError) {
       console.error("Error saving theme settings:", upsertError.message || upsertError);
-      setError(upsertError);
+      setActionError(upsertError);
       setSettings(oldSettings); // Rollback
       return { success: false, error: upsertError };
     }
@@ -102,7 +104,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }
 
   return (
-    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading, error }}>
+    <ThemeContext.Provider value={{ ...settings, updateThemeSettings, resetBackgroundImage, loading, loadError, actionError }}>
       {children}
     </ThemeContext.Provider>
   );

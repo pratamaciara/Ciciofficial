@@ -5,7 +5,8 @@ interface AdminSettingsContextType {
   whatsAppNumber: string;
   setWhatsAppNumber: (number: string) => Promise<{ success: boolean; error?: any; }>;
   loading: boolean;
-  error: any | null;
+  loadError: any | null; // Error saat memuat data awal
+  actionError: any | null; // Error saat melakukan aksi (menyimpan)
 }
 
 const AdminSettingsContext = createContext<AdminSettingsContextType | undefined>(undefined);
@@ -15,12 +16,13 @@ const defaultWhatsAppNumber = '6281234567890'; // Fallback number
 export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [whatsAppNumber, setWhatsAppNumberState] = useState<string>(defaultWhatsAppNumber);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any | null>(null);
+  const [loadError, setLoadError] = useState<any | null>(null);
+  const [actionError, setActionError] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchSettings = async () => {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       if (!supabase) {
         console.warn("Supabase client not initialized. Using default settings.");
         setLoading(false);
@@ -36,7 +38,7 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
         setWhatsAppNumberState(data.value);
       } else if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
         console.error("Error fetching WhatsApp number:", fetchError.message || fetchError);
-        setError(fetchError);
+        setLoadError(fetchError);
       }
       setLoading(false);
     };
@@ -45,11 +47,11 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
   }, []);
 
   const setWhatsAppNumber = async (number: string) => {
-    setError(null);
+    setActionError(null); // Hapus error aksi sebelumnya
     if (!supabase) {
       console.error("Supabase client not initialized. Cannot save settings.");
       const err = new Error("Supabase client not initialized");
-      setError(err);
+      setActionError(err);
       return { success: false, error: err };
     }
     const oldNumber = whatsAppNumber;
@@ -60,7 +62,7 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
 
     if (upsertError) {
       console.error("Error saving WhatsApp number:", upsertError.message || upsertError);
-      setError(upsertError);
+      setActionError(upsertError);
       setWhatsAppNumberState(oldNumber); // Rollback on error
       return { success: false, error: upsertError };
     }
@@ -68,7 +70,7 @@ export const AdminSettingsProvider: React.FC<{ children: ReactNode }> = ({ child
   };
 
   return (
-    <AdminSettingsContext.Provider value={{ whatsAppNumber, setWhatsAppNumber, loading, error }}>
+    <AdminSettingsContext.Provider value={{ whatsAppNumber, setWhatsAppNumber, loading, loadError, actionError }}>
       {children}
     </AdminSettingsContext.Provider>
   );

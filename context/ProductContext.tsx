@@ -5,7 +5,8 @@ import { supabase } from '../utils/formatter';
 interface ProductContextType {
   products: Product[];
   loading: boolean;
-  error: any | null; // Expose error state
+  loadError: any | null; // Error saat memuat data awal
+  actionError: any | null; // Error saat melakukan aksi (CUD)
   addProduct: (product: Omit<Product, 'id' | 'created_at'>) => Promise<{ success: boolean; data?: Product; error?: any }>;
   updateProduct: (product: Product) => Promise<{ success: boolean; error?: any }>;
   deleteProduct: (productId: string) => Promise<{ success: boolean; error?: any }>;
@@ -17,12 +18,13 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any | null>(null);
+  const [loadError, setLoadError] = useState<any | null>(null);
+  const [actionError, setActionError] = useState<any | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      setError(null);
+      setLoadError(null);
       if (!supabase) {
         console.warn("Supabase client not initialized. Cannot fetch products.");
         setLoading(false);
@@ -35,7 +37,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       if (fetchError) {
         console.error('Error fetching products:', fetchError.message || fetchError);
-        setError(fetchError);
+        setLoadError(fetchError);
       } else {
         setProducts(data || []);
       }
@@ -46,14 +48,14 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   const addProduct = async (productData: Omit<Product, 'id' | 'created_at'>) => {
-    setError(null);
+    setActionError(null); // Hapus error aksi sebelumnya
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot add product.");
       console.error(err.message);
+      setActionError(err);
       return { success: false, error: err };
     }
     
-    // Kirim data ke Supabase, biarkan DB membuat ID (UUID) & created_at
     const { data: newProduct, error: insertError } = await supabase
       .from('products')
       .insert(productData)
@@ -62,24 +64,26 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (insertError) {
       console.error('Error adding product:', insertError.message || insertError);
-      setError(insertError);
+      setActionError(insertError);
       return { success: false, error: insertError };
     }
 
     if (newProduct) {
-      // Perbarui state dengan data valid dari database
       setProducts(prev => [newProduct, ...prev]);
       return { success: true, data: newProduct };
     }
     
-    return { success: false, error: new Error('Failed to get product back after creation') };
+    const err = new Error('Failed to get product back after creation');
+    setActionError(err);
+    return { success: false, error: err };
   };
 
   const updateProduct = async (updatedProduct: Product) => {
-    setError(null);
+    setActionError(null); // Hapus error aksi sebelumnya
     if (!supabase) {
       const err = new Error("Supabase client not initialized. Cannot update product.");
       console.error(err.message);
+      setActionError(err);
       return { success: false, error: err };
     }
     const originalProducts = products;
@@ -92,7 +96,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (updateError) {
       console.error('Error updating product:', updateError.message || updateError);
-      setError(updateError);
+      setActionError(updateError);
       setProducts(originalProducts); // Rollback
       return { success: false, error: updateError };
     }
@@ -100,10 +104,11 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteProduct = async (productId: string) => {
-    setError(null);
+    setActionError(null); // Hapus error aksi sebelumnya
     if (!supabase) {
        const err = new Error("Supabase client not initialized. Cannot delete product.");
        console.error(err.message);
+       setActionError(err);
        return { success: false, error: err };
     }
 
@@ -119,12 +124,11 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     if (dbError) {
       console.error('Error deleting product from database:', dbError.message || dbError);
-      setError(dbError);
+      setActionError(dbError);
       setProducts(originalProducts); // Rollback
       return { success: false, error: dbError };
     }
 
-    // Hanya coba hapus gambar dari storage jika URLnya adalah URL Supabase
     if (productToDelete && productToDelete.imageUrl && productToDelete.imageUrl.includes('supabase.co')) {
       try {
         const url = new URL(productToDelete.imageUrl);
@@ -134,7 +138,6 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
             const { error: storageError } = await supabase.storage.from('product-images').remove([filePath]);
             if (storageError) {
                 console.error('Error deleting image from storage:', storageError.message || storageError);
-                // Non-critical error, don't return failure for this
             }
         }
       } catch (e) {
@@ -149,7 +152,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   return (
-    <ProductContext.Provider value={{ products, loading, error, addProduct, updateProduct, deleteProduct, getProductById }}>
+    <ProductContext.Provider value={{ products, loading, loadError, actionError, addProduct, updateProduct, deleteProduct, getProductById }}>
       {children}
     </ProductContext.Provider>
   );
@@ -163,5 +166,4 @@ export const useProducts = (): ProductContextType => {
   return context;
 };
 
-// Export context for direct consumption if needed
 export { ProductContext };

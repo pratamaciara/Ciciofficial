@@ -46,11 +46,12 @@ const ConfigurationError = () => (
 );
 
 const AppContent = () => {
-  const { error: productError } = useProducts();
-  const { error: settingsError } = useAdminSettings();
-  const { error: themeError } = useTheme();
+  const { loadError: productLoadError, actionError: productActionError } = useProducts();
+  const { loadError: settingsLoadError, actionError: settingsActionError } = useAdminSettings();
+  const { loadError: themeLoadError, actionError: themeActionError } = useTheme();
 
-  const anyError = productError || settingsError || themeError;
+  // Gabungkan semua kemungkinan error dari load awal maupun dari aksi pengguna
+  const anyError = productLoadError || settingsLoadError || themeLoadError || productActionError || settingsActionError || themeActionError;
   
   if (anyError) {
     const errorCode = anyError.code || '';
