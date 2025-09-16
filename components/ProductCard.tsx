@@ -69,7 +69,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
         )}
         <Link to={`/product/${product.id}`} className={isOutOfStock ? 'pointer-events-none' : ''}>
-          <img src={product.imageUrl} alt={product.name} className={`w-full h-48 object-cover ${isOutOfStock ? 'grayscale' : ''}`} />
+          <img src={product.imageUrl} alt={product.name} className={`w-full h-40 object-cover ${isOutOfStock ? 'grayscale' : ''}`} />
         </Link>
         <div className="p-4 flex flex-col flex-grow">
           <Link to={`/product/${product.id}`} className={`hover:text-primary transition-colors ${isOutOfStock ? 'pointer-events-none' : ''}`}>
