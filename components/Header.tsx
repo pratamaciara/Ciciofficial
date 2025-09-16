@@ -42,11 +42,11 @@ const Header: React.FC = () => {
         <header className="bg-white shadow-md sticky top-0 z-40">
             <div className="container mx-auto px-4 py-3">
                 <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                        <NavLink to="/" className="text-2xl font-bold text-primary">
+                    <div className="flex-1 min-w-0">
+                        <NavLink to="/" className="text-xl sm:text-2xl font-bold text-primary truncate">
                             {storeName || 'TokoKoo'}
                         </NavLink>
-                         {storeDescription && <p className="text-sm text-gray-500 mt-1">{storeDescription}</p>}
+                         {storeDescription && <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate">{storeDescription}</p>}
                     </div>
                     <nav className="flex items-center space-x-4 sm:space-x-6">
                         <div className="hidden sm:flex items-center space-x-3">

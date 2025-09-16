@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useProducts } from '../context/ProductContext';
 import ProductCard from './ProductCard';
@@ -48,7 +47,7 @@ const ProductList: React.FC = () => {
     return (
         <button
             onClick={() => setActiveFilter(filter)}
-            className={`px-4 py-2 text-sm sm:text-base font-semibold rounded-full transition-colors duration-200 ${
+            className={`px-3 py-1.5 text-sm sm:px-4 sm:py-2 font-semibold rounded-full transition-colors duration-200 ${
                 isActive
                     ? 'bg-primary text-white shadow'
                     : 'bg-white text-gray-600 hover:bg-gray-100'

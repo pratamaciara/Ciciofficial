@@ -92,16 +92,16 @@ const ProductPreview: React.FC = () => {
                     </div>
                     <div className="flex flex-col">
                         <p className="text-gray-500 text-sm mb-1">{product.category}</p>
-                        <h1 className="text-3xl font-bold text-gray-800">{product.name}</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{product.name}</h1>
                         
                         <div className="flex items-baseline gap-3 my-4">
-                            <p className="text-primary font-bold text-4xl">{formatCurrency(finalPrice)}</p>
+                            <p className="text-primary font-bold text-3xl sm:text-4xl">{formatCurrency(finalPrice)}</p>
                             {isOnSale && (
-                                <p className="text-gray-400 line-through text-2xl">{formatCurrency(finalOriginalPrice)}</p>
+                                <p className="text-gray-400 line-through text-xl sm:text-2xl">{formatCurrency(finalOriginalPrice)}</p>
                             )}
                         </div>
 
-                        <div className="flex items-center space-x-2 mb-4 text-base">
+                        <div className="flex items-center space-x-2 mb-4 text-sm sm:text-base">
                             {!isOutOfStock && (
                                 <p className={`${product.stock <= 10 ? 'text-orange-600 font-semibold' : 'text-gray-600'}`}>
                                     Sisa stok: {product.stock}
@@ -129,21 +129,21 @@ const ProductPreview: React.FC = () => {
                         
                         {product.description && (
                             <div className="mb-6 border-t pt-4">
-                                <h2 className="text-lg font-semibold text-gray-800 mb-2">Deskripsi Produk</h2>
-                                <p className="text-gray-600 whitespace-pre-wrap text-base leading-relaxed">{product.description}</p>
+                                <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">Deskripsi Produk</h2>
+                                <p className="text-gray-600 whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{product.description}</p>
                             </div>
                         )}
 
                         <div className="space-y-6">
                             {product.variants.length > 0 && (
                                 <div>
-                                    <label htmlFor={`variant-${product.id}`} className="block text-md font-medium text-gray-800">Pilih Varian</label>
+                                    <label htmlFor={`variant-${product.id}`} className="block text-sm sm:text-md font-medium text-gray-800">Pilih Varian</label>
                                     <select
                                         id={`variant-${product.id}`}
                                         value={selectedVariantId}
                                         onChange={(e) => setSelectedVariantId(e.target.value)}
                                         disabled={isOutOfStock}
-                                        className="mt-2 block w-full pl-3 pr-10 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md shadow-sm disabled:bg-gray-100"
+                                        className="mt-2 block w-full pl-3 pr-10 py-2 text-sm border-gray-300 focus:outline-none focus:ring-primary focus:border-primary rounded-md shadow-sm disabled:bg-gray-100"
                                     >
                                         {product.variants.map(variant => (
                                         <option key={variant.id} value={variant.id}>
@@ -154,7 +154,7 @@ const ProductPreview: React.FC = () => {
                                 </div>
                             )}
                             <div>
-                                <label htmlFor={`quantity-${product.id}`} className="block text-md font-medium text-gray-800">Jumlah</label>
+                                <label htmlFor={`quantity-${product.id}`} className="block text-sm sm:text-md font-medium text-gray-800">Jumlah</label>
                                 <input
                                     type="number"
                                     id={`quantity-${product.id}`}
@@ -162,7 +162,7 @@ const ProductPreview: React.FC = () => {
                                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                                     min="1"
                                     disabled={isOutOfStock}
-                                    className="mt-2 block w-full pl-3 pr-2 py-2.5 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md shadow-sm disabled:bg-gray-100"
+                                    className="mt-2 block w-full pl-3 pr-2 py-2 text-sm border-gray-300 focus:outline-none focus:ring-primary focus:border-primary rounded-md shadow-sm disabled:bg-gray-100"
                                 />
                             </div>
                         </div>
@@ -171,14 +171,14 @@ const ProductPreview: React.FC = () => {
                             <button 
                                 onClick={handleBuyNowClick}
                                 disabled={isOutOfStock}
-                                className={`w-full py-3 px-6 rounded-md font-semibold text-lg text-white transition-colors ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
+                                className={`w-full py-2.5 sm:py-3 px-6 rounded-md font-semibold text-base sm:text-lg text-white transition-colors ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
                             >
                             {isOutOfStock ? 'Stok Habis' : 'Beli Sekarang'}
                             </button>
                             <button 
                                 onClick={handleAddToCart}
                                 disabled={isOutOfStock}
-                                className={`w-full py-3 px-6 rounded-md font-semibold text-lg transition-colors ${isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'}`}
+                                className={`w-full py-2.5 sm:py-3 px-6 rounded-md font-semibold text-base sm:text-lg transition-colors ${isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'}`}
                             >
                                 {isOutOfStock ? 'Stok Habis' : '+ Tambah ke Keranjang'}
                             </button>

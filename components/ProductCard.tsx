@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '../types';
@@ -71,17 +70,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <Link to={`/product/${product.id}`} className={isOutOfStock ? 'pointer-events-none' : ''}>
           <img src={product.imageUrl} alt={product.name} className={`w-full h-40 object-cover ${isOutOfStock ? 'grayscale' : ''}`} />
         </Link>
-        <div className="p-4 flex flex-col flex-grow">
+        <div className="p-3 sm:p-4 flex flex-col flex-grow">
           <Link to={`/product/${product.id}`} className={`hover:text-primary transition-colors ${isOutOfStock ? 'pointer-events-none' : ''}`}>
-            <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">{product.name}</h3>
           </Link>
           <div className="flex items-baseline gap-2 mt-1">
-             <p className="text-primary font-bold text-xl">{formatCurrency(finalPrice)}</p>
+             <p className="text-primary font-bold text-lg sm:text-xl">{formatCurrency(finalPrice)}</p>
              {isOnSale && (
-                <p className="text-gray-500 line-through text-sm">{formatCurrency(finalOriginalPrice)}</p>
+                <p className="text-gray-500 line-through text-xs sm:text-sm">{formatCurrency(finalOriginalPrice)}</p>
              )}
           </div>
-          <div className="flex justify-between items-center text-sm mt-1">
+          <div className="flex justify-between items-center text-xs sm:text-sm mt-1">
             {!isOutOfStock && (
               <p className={`${product.stock <= 10 ? 'text-orange-600 font-semibold' : 'text-gray-500'}`}>
                 Sisa stok: {product.stock}
@@ -99,13 +98,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <div className="mt-4 space-y-3 flex-grow">
             {product.variants.length > 0 && (
               <div>
-                <label htmlFor={`variant-${product.id}`} className="block text-sm font-medium text-gray-700">Varian</label>
+                <label htmlFor={`variant-${product.id}`} className="block text-xs sm:text-sm font-medium text-gray-700">Varian</label>
                 <select
                   id={`variant-${product.id}`}
                   value={selectedVariantId}
                   onChange={(e) => setSelectedVariantId(e.target.value)}
                   disabled={isOutOfStock}
-                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md disabled:bg-gray-100"
+                  className="mt-1 block w-full pl-3 pr-10 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-primary focus:border-primary rounded-md disabled:bg-gray-100"
                 >
                   {product.variants.map(variant => (
                     <option key={variant.id} value={variant.id}>{variant.name}</option>
@@ -114,7 +113,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </div>
             )}
             <div>
-              <label htmlFor={`quantity-${product.id}`} className="block text-sm font-medium text-gray-700">Jumlah</label>
+              <label htmlFor={`quantity-${product.id}`} className="block text-xs sm:text-sm font-medium text-gray-700">Jumlah</label>
               <input
                 type="number"
                 id={`quantity-${product.id}`}
@@ -122,22 +121,22 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                 min="1"
                 disabled={isOutOfStock}
-                className="mt-1 block w-full pl-3 pr-2 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md disabled:bg-gray-100"
+                className="mt-1 block w-full pl-3 pr-2 py-1.5 text-sm border-gray-300 focus:outline-none focus:ring-primary focus:border-primary rounded-md disabled:bg-gray-100"
               />
             </div>
           </div>
-          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+          <div className="mt-4 flex flex-col gap-2">
               <button
                 onClick={handleAddToCart}
                 disabled={isOutOfStock}
-                className={`w-full py-2 px-4 rounded-md transition-colors font-semibold ${isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'}`}
+                className={`w-full py-1.5 px-3 sm:py-2 sm:px-4 text-sm rounded-md transition-colors font-semibold ${isOutOfStock ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20'}`}
               >
                 {isOutOfStock ? 'Habis' : '+ Keranjang'}
               </button>
               <button
                 onClick={handleBuyNowClick}
                 disabled={isOutOfStock}
-                className={`w-full py-2 px-4 rounded-md transition-colors font-semibold text-white ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
+                className={`w-full py-1.5 px-3 sm:py-2 sm:px-4 text-sm rounded-md transition-colors font-semibold text-white ${isOutOfStock ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-secondary'}`}
               >
                 {isOutOfStock ? 'Habis' : 'Beli'}
               </button>
