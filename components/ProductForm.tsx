@@ -52,6 +52,11 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, setImageState: React.Dispatch<React.SetStateAction<string>>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Harap pilih file gambar yang valid.');
+                e.target.value = ''; // Reset file input
+                return;
+            }
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImageState(reader.result as string);
@@ -113,9 +118,18 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!imageUrl) {
-            alert('Gambar Utama wajib diunggah.');
+            alert('URL Gambar Utama wajib diisi.');
             return;
         }
+        if (imageUrl.startsWith('data:image')) {
+            alert('URL Gambar Utama masih berupa preview lokal. Harap ganti dengan URL publik agar bisa dilihat oleh pengunjung.');
+            return;
+        }
+        if (whatsappImageUrl && whatsappImageUrl.startsWith('data:image')) {
+            alert('URL Gambar WA masih berupa preview lokal. Harap ganti dengan URL publik atau kosongkan.');
+            return;
+        }
+
         const hasDiscount = discountType !== 'none' && discountValue > 0 && priceInput > calculatedPrice;
         
         const newProduct: Product = {
@@ -181,6 +195,65 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
                     <input type="number" value={salesCount} onChange={e => setSalesCount(Number(e.target.value))} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-primary focus:border-primary" />
                 </div>
             </div>
+            
+            <div className="border-t pt-4">
+                <label className="block text-sm font-medium text-gray-700">URL Gambar Utama <span className="text-red-500">*</span></label>
+                <div className="flex items-center space-x-2 mt-1">
+                    <input 
+                        type="url" 
+                        value={imageUrl.startsWith('data:image') ? '' : imageUrl}
+                        onChange={e => setImageUrl(e.target.value)}
+                        placeholder="https://.../gambar.png"
+                        required 
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-primary focus:border-primary" 
+                    />
+                    <label htmlFor="image-upload" className="cursor-pointer text-sm font-medium text-primary hover:underline whitespace-nowrap">
+                        Upload File
+                    </label>
+                    <input 
+                        id="image-upload"
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => handleImageUpload(e, setImageUrl)}
+                        className="hidden"
+                    />
+                </div>
+                {imageUrl.startsWith('data:image') && (
+                    <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md text-sm">
+                        <strong>Perhatian:</strong> Gambar ini hanya preview lokal. Agar muncul online, upload gambar ke <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" className="font-bold underline">postimages.org</a> atau sejenisnya, lalu salin & tempel 'Direct Link' ke kolom URL di atas.
+                    </div>
+                )}
+                {imageUrl && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
+            </div>
+
+            <div>
+                <label className="block text-sm font-medium text-gray-700">URL Gambar WA (Opsional)</label>
+                <div className="flex items-center space-x-2 mt-1">
+                    <input 
+                        type="url" 
+                        value={whatsappImageUrl.startsWith('data:image') ? '' : whatsappImageUrl}
+                        onChange={e => setWhatsappImageUrl(e.target.value)}
+                        placeholder="https://.../gambar-wa.png"
+                        className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-primary focus:border-primary" 
+                    />
+                    <label htmlFor="wa-image-upload" className="cursor-pointer text-sm font-medium text-primary hover:underline whitespace-nowrap">
+                        Upload File
+                    </label>
+                    <input 
+                        id="wa-image-upload"
+                        type="file" 
+                        accept="image/*"
+                        onChange={e => handleImageUpload(e, setWhatsappImageUrl)}
+                        className="hidden"
+                    />
+                </div>
+                {whatsappImageUrl.startsWith('data:image') && (
+                     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-md text-sm">
+                        <strong>Perhatian:</strong> Ini adalah preview lokal. Ganti dengan URL publik agar gambar muncul di pesan WhatsApp.
+                    </div>
+                )}
+                {whatsappImageUrl && <img src={whatsappImageUrl} alt="Preview WA" className="mt-2 h-24 w-24 rounded-md object-cover border" />}
+            </div>
 
             <div className="border-t pt-4 space-y-2">
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700">Deskripsi Produk</label>
@@ -213,28 +286,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSave, onCancel, productToEd
                     </button>
                 </div>
             </div>
-
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Gambar Utama</label>
-                <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={e => handleImageUpload(e, setImageUrl)}
-                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer" 
-                />
-                 {imageUrl && <img src={imageUrl} alt="Preview" className="mt-2 h-24 w-24 rounded-md object-cover" />}
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-700">Gambar WA (Opsional)</label>
-                <input 
-                    type="file" 
-                    accept="image/*"
-                    onChange={e => handleImageUpload(e, setWhatsappImageUrl)}
-                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
-                />
-                {whatsappImageUrl && <img src={whatsappImageUrl} alt="Preview WA" className="mt-2 h-24 w-24 rounded-md object-cover" />}
-            </div>
-
+            
             <div className="border-t pt-4">
                 <h3 className="text-lg font-medium text-gray-900">Varian Produk</h3>
                 {variants.map((variant, index) => (
